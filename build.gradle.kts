@@ -14,6 +14,7 @@ repositories {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation(compose.material3) //aparentemente necesito esto para hacer un puto combo box
     testImplementation(kotlin("test"))
 }
 
