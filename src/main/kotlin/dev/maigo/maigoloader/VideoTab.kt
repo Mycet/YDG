@@ -1,40 +1,21 @@
 package dev.maigo.maigoloader
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material.Surface
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
-import androidx.compose.material.TextFieldDefaults
-import androidx.compose.material.lightColors
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draganddrop.DragData
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import org.jetbrains.skia.Surface
+import androidx.compose.ui.unit.sp
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,93 +23,149 @@ import org.jetbrains.skia.Surface
 fun VideoTab() {
     var expanded by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
-    val options = listOf("MP4", "MP3", "MPG", "MKV")
-    var opcionInicial by remember { mutableStateOf("MP4") }
+    val formatList = listOf("MP4", "MKV", "WEBM", "AVI", "MOV")
+    var selectedFormat by remember { mutableStateOf("MP4") }
 
-    Surface(
-        modifier = Modifier.width(800.dp),
-        color = Color(0xFFF02213) // esto modifica los colores de fondo donde esta cada row
-
+    Column(
+        modifier = Modifier
+            .fillMaxSize() // que ocupe todo el espacio
+            .padding(horizontal = 8.dp, vertical = 6.dp), // separación desde los bordes
+        verticalArrangement = Arrangement.spacedBy(4.dp) // espaciado vertical entre elementos
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), //esto de aca modifica el COLOR de fondo tambien excepto los bordes?/????/
+        // Fila 1 — URL
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(28.dp) // ancho fijo para todos los elementos de la fila
         ) {
+            Text(
+                text = "Video URL:",
+                color = AppTheme.TextPrimary,
+                fontSize = 13.sp,
+                modifier = Modifier.width(100.dp)
+            )
 
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().background(Color(0xFFae55cf)), //esto modifica el color la linea nomas (dios sabe si llego a usar esta mireda)
-
-            ) {
-                Text(
-                    text = "Video URL: ",
-                    color = Color(0XFF000000),
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-
-                TextField(
-                    value = videoURL,
-                    onValueChange = {videoURL = it},
-                    label = { Text("Video URL") },
-                    textStyle = TextStyle(color = Color.White),
-                    modifier = Modifier.width(220.dp).height(50.dp)
-                )
-
-            Spacer(modifier = Modifier.width(12.dp))
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Video Extension: ",
-                    style = TextStyle(),
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded },
-                    modifier = Modifier.width(220.dp).height(60.dp)
-
-                ) {
-                    TextField(
-                        value = opcionInicial,
-                        onValueChange = { opcionInicial = it },
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(
-                            focusedIndicatorColor = Color(0xFF9335b5),
-                            unfocusedIndicatorColor = Color(0xFFFFFFF),
-                            focusedLabelColor = Color.Blue,
-                            unfocusedLabelColor = Color.Blue
-                        ),
+            // Mayor control que TextField
+            BasicTextField(
+                value = videoURL,
+                onValueChange = { videoURL = it }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
+                textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
+                cursorBrush = SolidColor(AppTheme.TextPrimary),
+                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)  // ocupa todo el espacio restante de la fila
+                    .height(26.dp)
+                    .border(1.dp, AppTheme.Border2)
+                    .background(AppTheme.Background2),
+                decorationBox = { innerTextField ->
+                    Box(
+                        contentAlignment = Alignment.CenterStart,
                         modifier = Modifier
-                            .menuAnchor()
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        containerColor = Color(0xFF9335b5)
+                            .fillMaxSize()
+                            .padding(horizontal = 6.dp)
                     ) {
-                        options.forEach {option ->
-                            DropdownMenuItem(
-                                text = { Text(option, color = Color.Black) },
-                                onClick = {
-                                    opcionInicial = option
-                                    expanded = false
-                                },
-                                contentPadding = PaddingValues(0.dp)
+                        if (videoURL.isEmpty()) {
+                            // Texto que muestra cuando el campo está vacío
+                            Text(
+                                "Insert link here",
+                                color = AppTheme.TextSecondary,
+                                fontSize = 13.sp
                             )
                         }
+                        innerTextField()  // el campo de texto real va acá adentro
                     }
+                }
+            )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+            // Box exterior — color oscuro, es el "borde" exterior
+            BevelButton(
+                text = "Download",
+                onClick = { },
+                modifier = Modifier.padding(start = 6.dp)
+            )
+        }
+
+        // Fila 2: Extensión
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(28.dp)
+        ) {
+            Text(
+                text = "Video Extension:",
+                color = AppTheme.TextPrimary,
+                fontSize = 13.sp,
+                modifier = Modifier.width(100.dp)
+            )
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.width(160.dp).height(26.dp)
+            ) {
+                BasicTextField(
+                    value = selectedFormat,
+                    onValueChange = {},
+                    readOnly = true,
+                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
+                    cursorBrush = SolidColor(Color.Transparent),
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                        .fillMaxWidth()
+                        .height(26.dp)
+                        .border(1.dp, AppTheme.Border2)
+                        .background(AppTheme.Background2),
+                    decorationBox = { innerTextField ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 6.dp)
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                innerTextField()
+                            }
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        }
+                    }
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    containerColor = AppTheme.Background2
+                ) {
+                    formatList.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option, color = AppTheme.TextPrimary, fontSize = 13.sp) },
+                            modifier = Modifier.height(26.dp),
+                            onClick = {
+                                selectedFormat = option
+                                expanded = false
+                            }
+                        )
+                    }
+                }
             }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(AppTheme.Background2)
+                .drawBehind {
+                    val s = 0.5.dp.toPx() // offset necesario para trazar la linea
+                    val color = AppTheme.Border1
+                    val w = s * 2 // grosor de la linea
+
+                    // Izquierdo, derecho, superior, inferior
+                    drawLine(color, Offset(s, 0f), Offset(s, size.height), w)
+                    drawLine(color, Offset(size.width - s, 0f), Offset(size.width - s, size.height), w)
+                    drawLine(color, Offset(0f, s), Offset(size.width, s), w)
+                    drawLine(color, Offset(0f, size.height - s), Offset(size.width, size.height - s), w)
+
+                }
+                .padding(2.dp)
+        ) {
 
         }
-    }
-
     }
 }

@@ -1,13 +1,16 @@
 package dev.maigo.maigoloader
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -16,47 +19,56 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun TabBar(
     selectedTab: AppTab,
-    onTabSelected: (AppTab) -> Unit  // Función que recibe un AppTab y devuelve void
+    onTabSelected: (AppTab) -> Unit,  // Función que recibe un AppTab y devuelve void
+    borderColor: Color = AppTheme.Border1,
+    tabWidth: Dp = 90.dp
 ) {
-// El Row que contiene los tabs tiene el color del BORDE/MARCO
-    // para que los tabs inactivos (que se hunden con paddingTop) muestren ese color atrás
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(36.dp)
-            .background(AppTheme.Border)
-            .padding(start = 4.dp, top = 0.dp)
-    ) {
-        AppTab.entries.forEach { tab ->
-            val isSelected = tab == selectedTab
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .background(AppTheme.Background)
+        ) {
+            AppTab.entries.forEach { tab ->
+                val isSelected = tab == selectedTab
 
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .width(90.dp)
-                    // El tab activo ocupa toda la altura (36dp)
-                    // El inactivo tiene 4dp de padding arriba, se "hunde"
-                    .padding(top = if (isSelected) 0.dp else 4.dp)
-                    .fillMaxHeight()
-                    .background(
-                        if (isSelected) AppTheme.Surface else AppTheme.TabInactive
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .width(tabWidth)
+                        // El tab activo ocupa toda la altura (36dp)
+                        // El inactivo tiene 4dp de padding arriba, se "hunde"
+                        .padding(top = if (isSelected) 0.dp else 4.dp)
+                        .fillMaxHeight()
+                        .background(
+                            if (isSelected) AppTheme.Surface else AppTheme.TabInactive
+                        )
+                        .drawBehind() {
+                            val s = 0.5.dp.toPx() // Offset necesario
+                            val c = borderColor
+                            if (isSelected) { // Si está seleccionado, no tiene borde inferior, para fusionarse con el cuerpo
+                                // Borde izquierdo, derecho y superior
+                                drawLine(c, Offset(s, 0f), Offset(s, size.height), s * 2) // desde (s; 0) hasta (s; size.height)
+                                drawLine(c, Offset(size.width - s, 0f), Offset(size.width - s, size.height), s * 2)
+                                drawLine(c, Offset(0f, s), Offset(size.width, s), s * 2)
+                            } else {
+                                // Borde izquierdo, derecho, superior e inferior
+                                drawLine(c, Offset(s, 0f), Offset(s, size.height), s * 2)
+                                drawLine(c, Offset(size.width - s, 0f), Offset(size.width - s, size.height), s * 2)
+                                drawLine(c, Offset(0f, s), Offset(size.width, s), s * 2)
+                                drawLine(c, Offset(0f, size.height - s), Offset(size.width, size.height - s), s * 2)
+                            }
+                        }
+                        .clickable { onTabSelected(tab) }
+                        .padding(horizontal = 12.dp)
+                ) {
+                    Text(
+                        text = tab.name,
+                        color = if (isSelected) AppTheme.TextPrimary else AppTheme.TextSecondary,
+                        fontSize = 13.sp
                     )
-                    // El tab activo NO tiene borde inferior (se funde con el contenido)
-                    // El inactivo SÍ tiene borde inferior
-                    .then(
-                        if (!isSelected) Modifier.border(
-                            width = 1.dp,
-                            color = AppTheme.Border,
-                        ) else Modifier
-                    )
-                    .clickable { onTabSelected(tab) }
-                    .padding(horizontal = 12.dp)
-            ) {
-                Text(
-                    text = tab.name,
-                    color = if (isSelected) AppTheme.TextPrimary else AppTheme.TextSecondary,
-                    fontSize = 13.sp
-                )
+                }
             }
         }
     }

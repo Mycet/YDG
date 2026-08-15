@@ -3,21 +3,20 @@ package dev.maigo.maigoloader
 import androidx.compose.ui.graphics.Color
 
 object AppTheme {
-    // Colores base
-    val Background = Color(0xFF1a0f24)       // Fondo principal, morado muy oscuro
-    val Surface = Color(0xFF2a1c38)          // Superficie de paneles
-    val SurfaceVariant = Color(0xFF3a2848)   // Hover, seleccionado
-    val Border = Color(0xFF160f1e)           // Bordes
+    val Background     = Color(0xFF2b2b2b)  // Bordes y marco exterior 0xFF3c3c3c 0xFF2b2b2b
+    val Background2    = Color(0xff1a1818)  // Fondo principal
+    val Border1        = Color(0xff1e1e1e)
+    val Border2        = Color(0xff646464)
+    val Surface        = Color(0xff505050)  // Cuerpo, Tab activo
+    val Surface2       = Color(0xff646464)  // Hover, dropdown, seleccionado
+    val Surface3       = Color(0xff828282)
+    val TabInactive    = Color(0xff464646)  // Tab no activo
+    val TabActive      = Color(0xff464646)  // Tab activo (igual que Surface, se funde)
 
-    // Tabs
-    val TabActive = Color(0xFF3a2848)        // Tab seleccionado
-    val TabInactive = Color(0xFF1f1429)      // Tab no seleccionado
+    val TextPrimary    = Color(0xFFe8e8e8)  // Texto principal
+    val TextSecondary  = Color(0xFF9b9b9b)  // Labels, texto secundario
 
-    // Texto
-    val TextPrimary = Color(0xFFe0d4f0)      // Texto principal
-    val TextSecondary = Color(0xFFaeb2b8)    // Texto secundario / labels
-
-    // Acento
-    val Accent = Color(0xFF9b59b6)           // Morado acento para botones principales
-    val AccentHover = Color(0xFFb07cc6)
+    val Accent         = Color(0xFF7c4fa0)
+    val AccentHover    = Color(0xFF9b68bf)
+    val AccentText     = Color(0xFFf0eaf8)
 }

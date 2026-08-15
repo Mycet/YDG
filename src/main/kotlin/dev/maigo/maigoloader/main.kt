@@ -9,7 +9,7 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "MaigoLoader v1.0",
-        state = rememberWindowState(width = 960.dp, height = 540.dp)
+        state = rememberWindowState(width = 1280.dp, height = 720.dp)
     ) {
         App()
     }
