@@ -80,7 +80,8 @@ fun VideoTab() {
             BevelButton(
                 text = "Download",
                 onClick = { },
-                modifier = Modifier.padding(start = 6.dp)
+                modifier = Modifier.padding(start = 6.dp),
+
             )
         }
 
