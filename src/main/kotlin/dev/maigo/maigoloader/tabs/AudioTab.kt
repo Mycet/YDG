@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader
+package dev.maigo.maigoloader.tabs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,15 +16,16 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import dev.maigo.maigoloader.utils.AppTheme
+import dev.maigo.maigoloader.utils.BevelButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VideoTab() {
+fun AudioTab(onProgress: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
-    val formatList = listOf("MP4", "MKV", "WEBM", "AVI", "MOV")
-    var selectedFormat by remember { mutableStateOf("MP4") }
+    val formatList = listOf("MP3", "ALAC", "FLAC", "M4A", "OPUS", "VORBIS", "WAV")
+    var selectedFormat by remember { mutableStateOf("MP3") }
 
     Column(
         modifier = Modifier
@@ -38,7 +39,7 @@ fun VideoTab() {
             modifier = Modifier.fillMaxWidth().height(28.dp) // ancho fijo para todos los elementos de la fila
         ) {
             Text(
-                text = "Video URL:",
+                text = "Audio URL:",
                 color = AppTheme.TextPrimary,
                 fontSize = 13.sp,
                 modifier = Modifier.width(100.dp)
@@ -80,8 +81,7 @@ fun VideoTab() {
             BevelButton(
                 text = "Download",
                 onClick = { },
-                modifier = Modifier.padding(start = 6.dp),
-
+                modifier = Modifier.padding(start = 6.dp)
             )
         }
 
@@ -169,4 +169,6 @@ fun VideoTab() {
 
         }
     }
+
+
 }

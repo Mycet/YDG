@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader
+package dev.maigo.maigoloader.utils
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

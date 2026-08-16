@@ -1,28 +1,12 @@
-package dev.maigo.maigoloader
+package dev.maigo.maigoloader.tabs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Text
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -32,14 +16,21 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.maigo.maigoloader.utils.AppTheme
+import dev.maigo.maigoloader.utils.BevelButton
+import dev.maigo.maigoloader.ytdownload.CommandManager
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AudioTab() {
+fun VideoTab(onProgress: (String) -> Unit) {
+    val formatList = listOf("MP4", "MKV", "WEBM", "AVI", "MOV")
+    var selectedFormat by remember { mutableStateOf("MP4") }
+
     var expanded by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
-    val formatList = listOf("MP3", "ALAC", "FLAC", "M4A", "OPUS", "VORBIS", "WAV")
-    var selectedFormat by remember { mutableStateOf("MP3") }
+
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -53,7 +44,7 @@ fun AudioTab() {
             modifier = Modifier.fillMaxWidth().height(28.dp) // ancho fijo para todos los elementos de la fila
         ) {
             Text(
-                text = "Audio URL:",
+                text = "Video URL:",
                 color = AppTheme.TextPrimary,
                 fontSize = 13.sp,
                 modifier = Modifier.width(100.dp)
@@ -94,9 +85,22 @@ fun AudioTab() {
             // Box exterior — color oscuro, es el "borde" exterior
             BevelButton(
                 text = "Download",
-                onClick = { },
-                modifier = Modifier.padding(start = 6.dp)
-            )
+                onClick = {
+                    scope.launch {
+                        CommandManager.downloadVideo(
+                            url = videoURL,
+                            format = selectedFormat,
+                            metadata = false,
+                            thumbnail = false,
+                            subs = false,
+                            noPlayList = false,
+                            onProgress = { onProgress(it) }
+                        )
+                    }
+                },
+                modifier = Modifier.padding(start = 6.dp),
+
+                )
         }
 
         // Fila 2: Extensión
@@ -180,9 +184,6 @@ fun AudioTab() {
                 }
                 .padding(2.dp)
         ) {
-
         }
     }
-
-
 }

@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader
+package dev.maigo.maigoloader.utils
 
 import androidx.compose.ui.graphics.Color
 
@@ -19,4 +19,6 @@ object AppTheme {
     val Accent         = Color(0xFF7c4fa0)
     val AccentHover    = Color(0xFF9b68bf)
     val AccentText     = Color(0xFFf0eaf8)
+
+    val ProgressBar    = Color(0xff12a904)
 }
