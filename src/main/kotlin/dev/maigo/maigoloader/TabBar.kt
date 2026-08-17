@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.maigo.maigoloader.utils.AppTheme
+import dev.maigo.maigoloader.objects.AppTheme
 
 // Unit = void
 
@@ -43,7 +43,7 @@ fun TabBar(
                         .padding(top = if (isSelected) 0.dp else 4.dp)
                         .fillMaxHeight()
                         .background(
-                            if (isSelected) AppTheme.Surface else AppTheme.TabInactive
+                            if (isSelected) AppTheme.TabActive else AppTheme.TabInactive
                         )
                         .drawBehind() {
                             val s = 0.5.dp.toPx() // Offset necesario
