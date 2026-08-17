@@ -1,7 +1,6 @@
 package dev.maigo.maigoloader.ytdownload
 
-import androidx.compose.ui.text.toLowerCase
-import dev.maigo.maigoloader.Prefs
+import dev.maigo.maigoloader.objects.Prefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
@@ -9,7 +8,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URI
-import java.net.URL
 import java.util.zip.ZipFile
 
 // object en vez de class porque no necesita instanciarse, se llama directamente
@@ -64,7 +62,9 @@ object CommandManager {
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
-            add("--format"); add(format.lowercase())
+            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}%(title)s.%(ext)s"))
+            addAll(listOf("--format", format.lowercase()))
+
             if (metadata) add("--add-metadata")
             if (thumbnail) add("--embed-thumbnail")
             if (subs) add("--embed-subs")
@@ -77,6 +77,7 @@ object CommandManager {
 
     suspend fun downloadAudio(
         url: String,
+        format: String,
         metadata: Boolean,
         thumbnail: Boolean,
         noPlayList: Boolean,
@@ -84,9 +85,8 @@ object CommandManager {
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
-            add("--extract-audio")
-            add("--audio-format")
-            add("mp3")
+            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}%(title)s.%(ext)s"))
+            addAll(listOf("--extract-audio", "--audio-format", format.lowercase()))
 
             if (metadata) add("--add-metadata")
             if (thumbnail) add("--embed-thumbnail")
