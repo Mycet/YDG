@@ -16,12 +16,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.maigo.maigoloader.utils.AppTheme
+import dev.maigo.maigoloader.objects.AppTheme
 import dev.maigo.maigoloader.utils.BevelButton
+import kotlinx.coroutines.CoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AudioTab(onProgress: (String) -> Unit) {
+fun AudioTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
     val formatList = listOf("MP3", "ALAC", "FLAC", "M4A", "OPUS", "VORBIS", "WAV")
