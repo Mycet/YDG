@@ -16,21 +16,20 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.maigo.maigoloader.utils.AppTheme
+import dev.maigo.maigoloader.objects.AppTheme
 import dev.maigo.maigoloader.utils.BevelButton
 import dev.maigo.maigoloader.ytdownload.CommandManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VideoTab(onProgress: (String) -> Unit) {
+fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
     val formatList = listOf("MP4", "MKV", "WEBM", "AVI", "MOV")
     var selectedFormat by remember { mutableStateOf("MP4") }
 
     var expanded by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
-
-    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -87,6 +86,15 @@ fun VideoTab(onProgress: (String) -> Unit) {
                 text = "Download",
                 onClick = {
                     scope.launch {
+                        if (videoURL.isEmpty()) {
+                            onProgress("Enter a URL first")
+                            return@launch
+                        }
+                        if (!videoURL.startsWith("http")) {
+                            onProgress("Invalid URL")
+                            return@launch
+                        }
+
                         CommandManager.downloadVideo(
                             url = videoURL,
                             format = selectedFormat,
