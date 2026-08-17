@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader
+package dev.maigo.maigoloader.objects
 
 import java.util.prefs.Preferences
 
