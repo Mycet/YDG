@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader.utils
+package dev.maigo.maigoloader.objects
 
 import androidx.compose.ui.graphics.Color
 
@@ -11,7 +11,7 @@ object AppTheme {
     val Surface2       = Color(0xff646464)  // Hover, dropdown, seleccionado
     val Surface3       = Color(0xff828282)
     val TabInactive    = Color(0xff464646)  // Tab no activo
-    val TabActive      = Color(0xff464646)  // Tab activo (igual que Surface, se funde)
+    val TabActive      = Color(0xff505050)  // Tab activo (igual que Surface, se funde)
 
     val TextPrimary    = Color(0xFFe8e8e8)  // Texto principal
     val TextSecondary  = Color(0xFF9b9b9b)  // Labels, texto secundario
@@ -20,5 +20,6 @@ object AppTheme {
     val AccentHover    = Color(0xFF9b68bf)
     val AccentText     = Color(0xFFf0eaf8)
 
-    val ProgressBar    = Color(0xff12a904)
+    val ProgressBar    = Color(0xff14aa05)
+    val ProgressBarError = Color(0xffaa1405)
 }
