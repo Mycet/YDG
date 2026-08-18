@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.Text
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +15,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.MenuAnchorType
 import dev.maigo.maigoloader.objects.AppTheme
 import dev.maigo.maigoloader.utils.BevelButton
 import dev.maigo.maigoloader.ytdownload.CommandManager
@@ -26,9 +26,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
     val formatList = listOf("MP4", "MKV", "WEBM", "AVI", "MOV")
+    val qualityList = listOf("1080p", "720p", "480p", "360p")
     var selectedFormat by remember { mutableStateOf("MP4") }
-
+    var selectedQuality by remember { mutableStateOf("1080p") }
     var expanded by remember { mutableStateOf(false) }
+    var expanded2 by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
 
     Column(
@@ -111,7 +113,7 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                 )
         }
 
-        // Fila 2: Extensión
+        // Fila 2: Extensión y calidad de video
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().height(28.dp)
@@ -154,7 +156,6 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                         }
                     }
                 )
-
                 ExposedDropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
@@ -167,6 +168,65 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                             onClick = {
                                 selectedFormat = option
                                 expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(30.dp))
+
+            Text(
+                text = "Video Quality:",
+                color = AppTheme.TextPrimary,
+                fontSize = 13.sp,
+                modifier = Modifier.width(100.dp)
+            )
+
+            ExposedDropdownMenuBox(
+                expanded = expanded2,
+                onExpandedChange = { expanded2 = !expanded2 },
+                modifier = Modifier.width(160.dp).height(26.dp)
+            ) {
+                BasicTextField(
+                    value = selectedQuality,
+                    onValueChange = {},
+                    readOnly = true,
+                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
+                    cursorBrush = SolidColor(Color.Transparent),
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                        .fillMaxWidth()
+                        .height(26.dp)
+                        .border(1.dp, AppTheme.Border2)
+                        .background(AppTheme.Background2),
+                    decorationBox = { innerTextField ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 6.dp)
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                innerTextField()
+                            }
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        }
+                    }
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded2,
+                    onDismissRequest = { expanded2 = false },
+                    modifier = Modifier.background(AppTheme.Background2)
+                ) {
+                    qualityList.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option, color = AppTheme.TextPrimary, fontSize = 13.sp) },
+                            modifier = Modifier.height(26.dp),
+                            onClick = {
+                                selectedQuality = option
+                                expanded2 = false
                             }
                         )
                     }
