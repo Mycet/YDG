@@ -1,11 +1,11 @@
-package dev.maigo.maigoloader.objects
+package dev.mycet.ydg.objects
 
 import java.util.prefs.Preferences
 
 object Prefs {
     // Preferences guarda en el registro de Windows automáticamente
     // El string es un identificador para la app
-    private val prefs = Preferences.userRoot().node("dev/maigo/maigoloader")
+    private val prefs = Preferences.userRoot().node("dev/mycet/ydg")
 
     var downloadFolder: String
         get() = prefs.get("downloadFolder", "")          // "" es el valor por defecto si no hay nada guardado

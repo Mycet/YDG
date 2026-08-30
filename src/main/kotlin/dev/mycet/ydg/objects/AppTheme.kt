@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader.objects
+package dev.mycet.ydg.objects
 
 import androidx.compose.ui.graphics.Color
 

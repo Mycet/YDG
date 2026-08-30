@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader.tabs
+package dev.mycet.ydg.tabs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,11 +17,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.maigo.maigoloader.objects.Prefs
-import dev.maigo.maigoloader.objects.AppTheme
-import dev.maigo.maigoloader.objects.Dependencies
-import dev.maigo.maigoloader.utils.BevelButton
-import dev.maigo.maigoloader.ytdownload.CommandManager
+import dev.mycet.ydg.objects.Prefs
+import dev.mycet.ydg.objects.AppTheme
+import dev.mycet.ydg.objects.Dependencies
+import dev.mycet.ydg.utils.BevelButton
+import dev.mycet.ydg.ytdownload.CommandManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File

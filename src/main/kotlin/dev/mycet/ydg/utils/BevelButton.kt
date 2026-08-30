@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader.utils
+package dev.mycet.ydg.utils
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.maigo.maigoloader.objects.AppTheme
+import dev.mycet.ydg.objects.AppTheme
 
 @Composable
 fun BevelButton(

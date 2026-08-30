@@ -1,14 +1,18 @@
-package dev.maigo.maigoloader.ytdownload
+package dev.mycet.ydg.ytdownload
 
-import dev.maigo.maigoloader.objects.Prefs
+import dev.mycet.ydg.objects.Prefs
+import dev.mycet.ydg.objects.VideoInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.util.zip.ZipFile
+
+private val json = Json { ignoreUnknownKeys = true }
 
 // object en vez de class porque no necesita instanciarse, se llama directamente
 object CommandManager {
@@ -100,6 +104,42 @@ object CommandManager {
     suspend fun updateYtDlp(onProgress: (String) -> Unit) {
         val comando = mutableListOf(ytDlpPath(), "-U")
         ejecutar(comando, onProgress)
+    }
+
+    suspend fun fetchVideoInfo(url: String): List<VideoInfo> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val comando = mutableListOf(
+                    ytDlpPath(),
+                    "--dump-json",
+                    "--flat-playlist",
+                    url
+                )
+
+                val proceso = ProcessBuilder(comando)
+                    .redirectErrorStream(true)
+                    .start()
+
+                val results = mutableListOf<VideoInfo>()
+                val reader = proceso.inputStream.bufferedReader()
+                var linea = reader.readLine()
+
+                while (linea != null) {
+                    if (linea.startsWith("{")) { // JSON
+                        try {
+                            val info = json
+                                .decodeFromString<VideoInfo>(linea)
+                            results.add(info)
+                        } catch (ex: Exception) {}
+                    }
+                    linea = reader.readLine()
+                }
+
+                results
+            } catch (ex: Exception) {
+                emptyList()
+            }
+        }
     }
 
     suspend fun downloadFile(url: String, destPath: String, onProgress: (String) -> Unit) {

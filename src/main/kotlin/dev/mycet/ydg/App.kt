@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader
+package dev.mycet.ydg
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,11 +19,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.maigo.maigoloader.objects.Dependencies
-import dev.maigo.maigoloader.tabs.AudioTab
-import dev.maigo.maigoloader.tabs.SetupTab
-import dev.maigo.maigoloader.tabs.VideoTab
-import dev.maigo.maigoloader.objects.AppTheme
+import dev.mycet.ydg.objects.Dependencies
+import dev.mycet.ydg.tabs.AudioTab
+import dev.mycet.ydg.tabs.SetupTab
+import dev.mycet.ydg.tabs.VideoTab
+import dev.mycet.ydg.objects.AppTheme
+import dev.mycet.ydg.tabs.TabBar
 
 // Los tabs disponibles en la app
 enum class AppTab { VIDEO, AUDIO, SETUP }

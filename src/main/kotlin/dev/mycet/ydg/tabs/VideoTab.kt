@@ -1,8 +1,14 @@
-package dev.maigo.maigoloader.tabs
+package dev.mycet.ydg.tabs
 
+import androidx.compose.foundation.HorizontalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,13 +22,19 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.MenuAnchorType
-import dev.maigo.maigoloader.objects.AppTheme
-import dev.maigo.maigoloader.utils.BevelButton
-import dev.maigo.maigoloader.ytdownload.CommandManager
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.input.pointer.pointerInput
+import dev.mycet.ydg.objects.AppTheme
+import dev.mycet.ydg.objects.VideoCard
+import dev.mycet.ydg.objects.VideoInfo
+import dev.mycet.ydg.utils.BevelButton
+import dev.mycet.ydg.ytdownload.CommandManager
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
     val formatList = listOf("MP4", "MKV", "WEBM", "AVI", "MOV")
@@ -32,6 +44,21 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var expanded2 by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
+
+    var previewItems by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(videoURL) {
+        previewItems = emptyList()
+        if (videoURL.startsWith("http")) {
+            isLoading = true
+            delay(800.milliseconds)
+            previewItems = CommandManager.fetchVideoInfo(videoURL)
+            isLoading = false
+        } else {
+            isLoading = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -252,6 +279,62 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                 }
                 .padding(2.dp)
         ) {
+            when {
+                isLoading -> {
+                    Text(
+                        text = "Loading...",
+                        color = AppTheme.TextSecondary,
+                        fontSize = 13.sp,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+
+                previewItems.isEmpty() && videoURL.startsWith("http") -> {
+                    Text(
+                        text = "No results",
+                        color = AppTheme.TextSecondary,
+                        fontSize = 13.sp,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+
+                previewItems.isNotEmpty() -> {
+                    val scrollState = rememberLazyListState()
+
+                    Column(modifier = Modifier.fillMaxWidth()
+                        .height(180.dp)
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
+                        LazyRow(
+                            state = scrollState,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f).fillMaxWidth()
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val event = awaitPointerEvent()
+                                            val delta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                            if (delta != 0f) {
+                                                scope.launch {
+                                                    scrollState.scrollBy(delta * 80f)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                        ) {
+                            items(previewItems) { video ->
+                                VideoCard(video)
+                            }
+                        }
+
+                        HorizontalScrollbar(
+                            adapter = rememberScrollbarAdapter(scrollState),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
         }
     }
 }

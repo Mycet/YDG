@@ -5,7 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.0"
 }
 
-group = "dev.maigo"
+group = "dev.mycet"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -25,7 +25,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "dev.maigo.maigoloader.MainKt"
+        mainClass = "dev.mycet.ydg.MainKt"
     }
 }
 

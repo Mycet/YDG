@@ -1,4 +1,4 @@
-package dev.maigo.maigoloader
+package dev.mycet.ydg.tabs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,7 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.maigo.maigoloader.objects.AppTheme
+import dev.mycet.ydg.AppTab
+import dev.mycet.ydg.objects.AppTheme
 
 // Unit = void
 
