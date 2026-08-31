@@ -2,6 +2,7 @@ package dev.mycet.ydg.objects
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,10 +25,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.mycet.ydg.utils.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
 import java.net.URI
+import kotlin.math.roundToInt
 
 @Composable
 fun rememberThumbnail(url: String, videoId: String = ""): ImageBitmap? {
@@ -53,7 +56,7 @@ fun rememberThumbnail(url: String, videoId: String = ""): ImageBitmap? {
 }
 
 @Composable
-fun VideoCard(video: VideoInfo) {
+fun VideoCard(video: VideoInfo, onClick: () -> Unit = {}) {
     val thumbnail = rememberThumbnail(video.thumbnail, video.id)
 
     Column(
@@ -61,6 +64,7 @@ fun VideoCard(video: VideoInfo) {
             .width(160.dp)
             .fillMaxHeight()
             .background(AppTheme.Surface)
+            .clickable { onClick() }
             .padding(6.dp)
     ) {
         // Thumbnail
@@ -88,15 +92,16 @@ fun VideoCard(video: VideoInfo) {
             text = video.title,
             color = AppTheme.TextPrimary,
             fontSize = 11.sp,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
 
         Spacer(modifier = Modifier.height(2.dp))
 
         // segundos a mm:ss
-        val mins = video.duration / 60
-        val secs = video.duration % 60
+        val totalSecs = video.duration.roundToInt()
+        val mins = totalSecs / 60
+        val secs = totalSecs % 60
         Text(
             text = "%d:%02d".format(mins, secs),
             color = AppTheme.TextSecondary,

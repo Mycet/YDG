@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 data class VideoInfo(
     val id: String = "",
     val title: String = "",
-    val duration: Int =  0,
+    val duration: Double = 0.0,
     @SerialName("thumbnail")
     val thumbnail: String = "",
     @SerialName("webpage_url")

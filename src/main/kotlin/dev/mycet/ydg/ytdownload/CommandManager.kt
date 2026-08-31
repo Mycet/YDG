@@ -1,11 +1,13 @@
 package dev.mycet.ydg.ytdownload
 
 import dev.mycet.ydg.objects.Prefs
+import dev.mycet.ydg.objects.VideoDetails
 import dev.mycet.ydg.objects.VideoInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -57,22 +59,18 @@ object CommandManager {
 
     suspend fun downloadVideo(
         url: String,
+        title: String,
         format: String,
-        metadata: Boolean,
-        thumbnail: Boolean,
-        subs: Boolean,
-        noPlayList: Boolean,
         onProgress: (String) -> Unit
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
-            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}%(title)s.%(ext)s"))
+            val outputTitle = title.ifEmpty { "%(title)s" }
+            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
             addAll(listOf("--format", format.lowercase()))
 
-            if (metadata) add("--add-metadata")
-            if (thumbnail) add("--embed-thumbnail")
-            if (subs) add("--embed-subs")
-            if (noPlayList) add("--no-playlist")
+            add("--add-metadata")
+            add("--embed-thumbnail")
             add(url)
         }
 
@@ -106,13 +104,15 @@ object CommandManager {
         ejecutar(comando, onProgress)
     }
 
-    suspend fun fetchVideoInfo(url: String): List<VideoInfo> {
+    suspend fun fetchVideoInfo(url: String, playlistStart: Int = 1, playlistEnd: Int = 50): List<VideoInfo> {
         return withContext(Dispatchers.IO) {
             try {
                 val comando = mutableListOf(
                     ytDlpPath(),
                     "--dump-json",
                     "--flat-playlist",
+                    "--playlist-start", playlistStart.toString(),
+                    "--playlist-end", playlistEnd.toString(),
                     url
                 )
 
@@ -127,6 +127,10 @@ object CommandManager {
                 while (linea != null) {
                     if (linea.startsWith("{")) { // JSON
                         try {
+                            if (linea.startsWith("{")) {
+                                println("DURATION RAW: ${Json.parseToJsonElement(linea).jsonObject["duration"]}")
+                                // ... resto igual
+                            }
                             val info = json
                                 .decodeFromString<VideoInfo>(linea)
                             results.add(info)
@@ -138,6 +142,26 @@ object CommandManager {
                 results
             } catch (ex: Exception) {
                 emptyList()
+            }
+        }
+    }
+
+    suspend fun fetchVideoDetails(url: String): VideoDetails? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val proceso = ProcessBuilder(listOf(ytDlpPath(), "--dump-json", url))
+                    .redirectErrorStream(true)
+                    .start()
+
+                val output = proceso.inputStream.bufferedReader().readText()
+                proceso.waitFor()
+
+                val line = output.lines().firstOrNull { it.startsWith("{") } ?: return@withContext null
+                println("DETAILS DURATION RAW: ${Json.parseToJsonElement(line).jsonObject["duration"]}")
+                json.decodeFromString<VideoDetails>(line)
+
+            } catch (ex: Exception) {
+                null
             }
         }
     }

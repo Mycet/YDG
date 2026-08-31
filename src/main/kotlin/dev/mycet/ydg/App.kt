@@ -23,7 +23,7 @@ import dev.mycet.ydg.objects.Dependencies
 import dev.mycet.ydg.tabs.AudioTab
 import dev.mycet.ydg.tabs.SetupTab
 import dev.mycet.ydg.tabs.VideoTab
-import dev.mycet.ydg.objects.AppTheme
+import dev.mycet.ydg.utils.AppTheme
 import dev.mycet.ydg.tabs.TabBar
 
 // Los tabs disponibles en la app

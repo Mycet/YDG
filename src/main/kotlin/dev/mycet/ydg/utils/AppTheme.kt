@@ -1,4 +1,4 @@
-package dev.mycet.ydg.objects
+package dev.mycet.ydg.utils
 
 import androidx.compose.ui.graphics.Color
 

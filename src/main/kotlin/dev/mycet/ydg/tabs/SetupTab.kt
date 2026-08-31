@@ -18,7 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.objects.Prefs
-import dev.mycet.ydg.objects.AppTheme
+import dev.mycet.ydg.utils.AppTheme
 import dev.mycet.ydg.objects.Dependencies
 import dev.mycet.ydg.utils.BevelButton
 import dev.mycet.ydg.ytdownload.CommandManager

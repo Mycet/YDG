@@ -1,6 +1,7 @@
 package dev.mycet.ydg.tabs
 
 import androidx.compose.foundation.HorizontalScrollbar
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.scrollBy
@@ -20,44 +21,77 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.input.pointer.pointerInput
-import dev.mycet.ydg.objects.AppTheme
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.sp
+import dev.mycet.ydg.utils.AppTheme
 import dev.mycet.ydg.objects.VideoCard
+import dev.mycet.ydg.objects.VideoDetails
+import dev.mycet.ydg.objects.VideoFormat
 import dev.mycet.ydg.objects.VideoInfo
+import dev.mycet.ydg.objects.rememberThumbnail
 import dev.mycet.ydg.utils.BevelButton
+import dev.mycet.ydg.utils.Sizes
 import dev.mycet.ydg.ytdownload.CommandManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
-    val formatList = listOf("MP4", "MKV", "WEBM", "AVI", "MOV")
-    val qualityList = listOf("1080p", "720p", "480p", "360p")
-    var selectedFormat by remember { mutableStateOf("MP4") }
-    var selectedQuality by remember { mutableStateOf("1080p") }
-    var expanded by remember { mutableStateOf(false) }
-    var expanded2 by remember { mutableStateOf(false) }
     var videoURL by remember { mutableStateOf("") }
-
     var previewItems by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
+    var isLoadingList by remember { mutableStateOf(false) }
+    var detailsLoadedForId by remember { mutableStateOf("") }
+    val detailsCache = remember { mutableStateMapOf<String, VideoDetails>() }
+
+    // Panel superior
+    var details by remember { mutableStateOf<VideoDetails?>(null) }
+    var isLoadingDetails by remember { mutableStateOf(false) }
+    var editedTitle by remember { mutableStateOf("") }
+    var selectedExt by remember { mutableStateOf("") }
+    var selectedFormat by remember { mutableStateOf<VideoFormat?>(null) }
+    var expandedExt by remember { mutableStateOf(false) }
+    var expandedQuality by remember { mutableStateOf(false) }
 
     LaunchedEffect(videoURL) {
         previewItems = emptyList()
+        details = null
         if (videoURL.startsWith("http")) {
-            isLoading = true
+            isLoadingList = true
             delay(800.milliseconds)
             previewItems = CommandManager.fetchVideoInfo(videoURL)
-            isLoading = false
+            isLoadingList = false
         } else {
-            isLoading = false
+            isLoadingList = false
         }
+    }
+
+    // Cuando llega la lista, cargar los detalles del primero
+    LaunchedEffect(previewItems) {
+        val first = previewItems.firstOrNull() ?: return@LaunchedEffect
+        if (detailsLoadedForId == first.id) return@LaunchedEffect
+
+        isLoadingDetails = true
+
+        val fetched = CommandManager.fetchVideoDetails(first.url)
+        if (fetched != null) {
+            details = fetched
+            editedTitle = fetched.title ?: ""
+            selectedExt = fetched.videoExtensions.firstOrNull() ?: ""
+            selectedFormat = fetched.videoFormatsForExt(selectedExt).firstOrNull()
+            detailsLoadedForId = first.id
+        }
+        isLoadingDetails = false
+    }
+
+    // Cuando llega el primero, resetear calidad seleccionada
+    LaunchedEffect(selectedExt) {
+        selectedFormat = details?.videoFormatsForExt(selectedExt)?.firstOrNull()
     }
 
     Column(
@@ -69,25 +103,22 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
         // Fila 1 — URL
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(28.dp) // ancho fijo para todos los elementos de la fila
+            modifier = Modifier.fillMaxWidth()
+                .height(28.dp) // ancho fijo para todos los elementos de la fila
+                .padding(horizontal = 20.dp)
         ) {
-            Text(
-                text = "Video URL:",
-                color = AppTheme.TextPrimary,
-                fontSize = 13.sp,
-                modifier = Modifier.width(100.dp)
-            )
-
-            // Mayor control que TextField
+            // BasicTextField permite mayor control que TextField
             BasicTextField(
                 value = videoURL,
-                onValueChange = { videoURL = it }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
-                textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
+                onValueChange = {
+                    videoURL = it
+                }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
+                textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.Font),
                 cursorBrush = SolidColor(AppTheme.TextPrimary),
                 singleLine = true,
                 modifier = Modifier
                     .weight(1f)  // ocupa todo el espacio restante de la fila
-                    .height(26.dp)
+                    .height(Sizes.TextField)
                     .border(1.dp, AppTheme.Border2)
                     .background(AppTheme.Background2),
                 decorationBox = { innerTextField ->
@@ -102,189 +133,37 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                             Text(
                                 "Insert link here",
                                 color = AppTheme.TextSecondary,
-                                fontSize = 13.sp
+                                fontSize = Sizes.Font
                             )
                         }
                         innerTextField()  // el campo de texto real va acá adentro
                     }
                 }
             )
-
-            // Box exterior — color oscuro, es el "borde" exterior
-            BevelButton(
-                text = "Download",
-                onClick = {
-                    scope.launch {
-                        if (videoURL.isEmpty()) {
-                            onProgress("Enter a URL first")
-                            return@launch
-                        }
-                        if (!videoURL.startsWith("http")) {
-                            onProgress("Invalid URL")
-                            return@launch
-                        }
-
-                        CommandManager.downloadVideo(
-                            url = videoURL,
-                            format = selectedFormat,
-                            metadata = false,
-                            thumbnail = false,
-                            subs = false,
-                            noPlayList = false,
-                            onProgress = { onProgress(it) }
-                        )
-                    }
-                },
-                modifier = Modifier.padding(start = 6.dp),
-
-                )
         }
 
-        // Fila 2: Extensión y calidad de video
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(28.dp)
-        ) {
-            Text(
-                text = "Video Extension:",
-                color = AppTheme.TextPrimary,
-                fontSize = 13.sp,
-                modifier = Modifier.width(100.dp)
-            )
-
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.width(160.dp).height(26.dp)
-            ) {
-                BasicTextField(
-                    value = selectedFormat,
-                    onValueChange = {},
-                    readOnly = true,
-                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
-                    cursorBrush = SolidColor(Color.Transparent),
-                    modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                        .fillMaxWidth()
-                        .height(26.dp)
-                        .border(1.dp, AppTheme.Border2)
-                        .background(AppTheme.Background2),
-                    decorationBox = { innerTextField ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 6.dp)
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                innerTextField()
-                            }
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        }
-                    }
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    containerColor = AppTheme.Background2
-                ) {
-                    formatList.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option, color = AppTheme.TextPrimary, fontSize = 13.sp) },
-                            modifier = Modifier.height(26.dp),
-                            onClick = {
-                                selectedFormat = option
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(30.dp))
-
-            Text(
-                text = "Video Quality:",
-                color = AppTheme.TextPrimary,
-                fontSize = 13.sp,
-                modifier = Modifier.width(100.dp)
-            )
-
-            ExposedDropdownMenuBox(
-                expanded = expanded2,
-                onExpandedChange = { expanded2 = !expanded2 },
-                modifier = Modifier.width(160.dp).height(26.dp)
-            ) {
-                BasicTextField(
-                    value = selectedQuality,
-                    onValueChange = {},
-                    readOnly = true,
-                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
-                    cursorBrush = SolidColor(Color.Transparent),
-                    modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                        .fillMaxWidth()
-                        .height(26.dp)
-                        .border(1.dp, AppTheme.Border2)
-                        .background(AppTheme.Background2),
-                    decorationBox = { innerTextField ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 6.dp)
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                innerTextField()
-                            }
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        }
-                    }
-                )
-
-                ExposedDropdownMenu(
-                    expanded = expanded2,
-                    onDismissRequest = { expanded2 = false },
-                    modifier = Modifier.background(AppTheme.Background2)
-                ) {
-                    qualityList.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option, color = AppTheme.TextPrimary, fontSize = 13.sp) },
-                            modifier = Modifier.height(26.dp),
-                            onClick = {
-                                selectedQuality = option
-                                expanded2 = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
+        // Fila 2 — Elementos
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(AppTheme.Background2)
                 .drawBehind {
-                    val s = 0.5.dp.toPx() // offset necesario para trazar la linea
+                    val s = 0.5.dp.toPx()
                     val color = AppTheme.Border1
-                    val w = s * 2 // grosor de la linea
-
-                    // Izquierdo, derecho, superior, inferior
+                    val w = s * 2
                     drawLine(color, Offset(s, 0f), Offset(s, size.height), w)
                     drawLine(color, Offset(size.width - s, 0f), Offset(size.width - s, size.height), w)
                     drawLine(color, Offset(0f, s), Offset(size.width, s), w)
                     drawLine(color, Offset(0f, size.height - s), Offset(size.width, size.height - s), w)
-
                 }
                 .padding(2.dp)
         ) {
             when {
-                isLoading -> {
+                isLoadingList -> {
                     Text(
                         text = "Loading...",
                         color = AppTheme.TextSecondary,
-                        fontSize = 13.sp,
+                        fontSize = Sizes.Font,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -293,47 +172,283 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                     Text(
                         text = "No results",
                         color = AppTheme.TextSecondary,
-                        fontSize = 13.sp,
+                        fontSize = Sizes.Font,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
 
                 previewItems.isNotEmpty() -> {
-                    val scrollState = rememberLazyListState()
+                    Column(modifier = Modifier.fillMaxSize()) {
 
-                    Column(modifier = Modifier.fillMaxWidth()
-                        .height(180.dp)
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        LazyRow(
-                            state = scrollState,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.weight(1f).fillMaxWidth()
-                                .pointerInput(Unit) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            val event = awaitPointerEvent()
-                                            val delta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
-                                            if (delta != 0f) {
-                                                scope.launch {
-                                                    scrollState.scrollBy(delta * 80f)
-                                                }
-                                            }
-                                        }
+                        // Panel superior — thumbnail + propiedades
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                val thumbnail = rememberThumbnail(details?.thumbnail ?: "")
+                                Box(
+                                    modifier = Modifier
+                                        .size(240.dp)
+                                        .fillMaxHeight()
+                                        .background(AppTheme.Surface2)
+                                ) {
+                                    if (thumbnail != null) {
+                                        Image(
+                                            bitmap = thumbnail,
+                                            contentDescription = "",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    if (isLoadingDetails) {
+                                        Text(
+                                            text = "Loading...",
+                                            color = AppTheme.TextSecondary,
+                                            fontSize = Sizes.Font,
+                                            modifier = Modifier.align(Alignment.Center)
+                                        )
                                     }
                                 }
-                        ) {
-                            items(previewItems) { video ->
-                                VideoCard(video)
+
+                                // Uploader y Duración
+                                val totalSecs = previewItems.firstOrNull { it.id == details?.id }?.duration?.roundToInt() ?: 0
+                                val mins = totalSecs / 60
+                                val secs = totalSecs % 60
+
+                                Text(
+                                    if (details == null) "" else "${details?.uploader}  ·  %d:%02d".format(mins, secs),
+                                    color = AppTheme.TextSecondary,
+                                    fontSize = 11.sp
+                                )
+
+                                if (!isLoadingDetails && details != null)
+                                    BevelButton(
+                                        text = "Download",
+                                        modifier = Modifier.padding(top = 10.dp),
+                                        onClick = {
+                                            scope.launch {
+                                                val fmt = selectedFormat ?: return@launch
+                                                CommandManager.downloadVideo(
+                                                    url = details!!.url,
+                                                    title = editedTitle,
+                                                    format = fmt.formatId,
+                                                    onProgress = { onProgress(it) }
+                                                )
+                                            }
+                                        }
+                                    )
+                            }
+
+                            // Propiedades
+                            if (details != null) {
+                                Column(
+                                    modifier = Modifier.fillMaxHeight(),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    // Titulo editable
+                                    PropRow(label = "Title") {
+                                        BasicTextField(
+                                            value = editedTitle,
+                                            onValueChange = { editedTitle = it },
+                                            textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.Font),
+                                            cursorBrush = SolidColor(AppTheme.TextPrimary),
+                                            singleLine = true,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(Sizes.TextField)
+                                                .border(1.dp, AppTheme.Border2)
+                                                .background(AppTheme.Background2),
+                                            decorationBox = { innerTextField ->
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                                                    contentAlignment = Alignment.CenterStart
+                                                ) { innerTextField() }
+                                            }
+                                        )
+                                    }
+
+                                    // Dropdown formato (ext)
+                                    PropRow(label = "Format") {
+                                        SimpleDropdown(
+                                            value = selectedExt.uppercase(),
+                                            expanded = expandedExt,
+                                            onExpandedChange = { expandedExt = it },
+                                            options = details!!.videoExtensions,
+                                            onSelect = { selectedExt = it },
+                                            label = { it.uppercase() }
+                                        )
+                                    }
+
+                                    // Dropdown calidad
+                                    val qualityOptions = details!!.videoFormatsForExt(selectedExt)
+                                    PropRow(label = "Quality") {
+                                        SimpleDropdown(
+                                            value = selectedFormat?.let {
+                                                "${it.note}  ${it.displaySize}"
+                                            } ?: "",
+                                            expanded = expandedQuality,
+                                            onExpandedChange = { expandedQuality = it },
+                                            options = qualityOptions,
+                                            onSelect = { selectedFormat = it },
+                                            label = { "${it.note}  ${it.displaySize}" }
+                                        )
+                                    }
+                                }
                             }
                         }
 
-                        HorizontalScrollbar(
-                            adapter = rememberScrollbarAdapter(scrollState),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // Playlist
+                        if (previewItems.size > 1) {
+                            val scrollState = rememberLazyListState()
+                            var isLoadingMore by remember { mutableStateOf(false) }
+
+                            LaunchedEffect(scrollState) {
+                                // cada vez que 'layoutInfo.visibleItemsInfo' cambia
+                                snapshotFlow {
+                                    scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                                }.collect { lastVisible ->
+                                    if (!isLoadingMore && lastVisible != null && lastVisible >= previewItems.size - 8) {
+                                        isLoadingMore = true
+                                        val newItems = CommandManager.fetchVideoInfo(
+                                            videoURL,
+                                            playlistStart = previewItems.size + 1,
+                                            playlistEnd = previewItems.size + 50
+                                        )
+                                        if (newItems.isNotEmpty())
+                                            previewItems = previewItems + newItems
+                                        isLoadingMore = false
+                                    }
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                                    .height(150.dp)
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                LazyRow(
+                                    state = scrollState,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.weight(1f).fillMaxWidth()
+                                        .pointerInput(Unit) {
+                                            awaitPointerEventScope {
+                                                while (true) {
+                                                    val event = awaitPointerEvent()
+                                                    val delta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                                    if (delta != 0f) scope.launch {
+                                                        scrollState.scrollBy(delta * 80f)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                ) {
+                                    items(previewItems) { video ->
+                                        VideoCard(video, onClick = {
+                                            scope.launch {
+                                                var cached = detailsCache[video.id]
+                                                if (cached == null) {
+                                                    isLoadingDetails = true;
+                                                    details = null;
+                                                    cached = CommandManager.fetchVideoDetails(video.url.ifEmpty { videoURL })
+                                                }
+
+                                                if (cached != null) {
+                                                    detailsCache[video.id] = cached
+                                                    details = cached
+                                                    detailsLoadedForId = video.id
+
+                                                    editedTitle = cached.title ?: ""
+                                                    selectedExt = cached.videoExtensions.firstOrNull() ?: ""
+                                                    selectedFormat = cached.videoFormatsForExt(selectedExt).firstOrNull()
+                                                }
+                                                isLoadingDetails = false;
+                                            }
+                                        })
+                                    }
+                                }
+
+                                HorizontalScrollbar(
+                                    adapter = rememberScrollbarAdapter(scrollState),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable // Fila de propiedades
+private fun PropRow(label: String, content: @Composable RowScope.() -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().height(26.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = label, color = AppTheme.TextSecondary, fontSize = 12.sp, modifier = Modifier.width(55.dp))
+        content()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable // Dropdown generico
+private fun <T> SimpleDropdown(
+    value: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<T>,
+    onSelect: (T) -> Unit,
+    label: (T) -> String,
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = Modifier.width(200.dp).height(Sizes.TextField)
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
+            cursorBrush = SolidColor(Color.Transparent),
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                .fillMaxWidth()
+                .height(Sizes.TextField)
+                .border(1.dp, AppTheme.Border2)
+                .background(AppTheme.Background2),
+            decorationBox = { innerTextField ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
+                ) {
+                    Box(Modifier.weight(1f)) { innerTextField() }
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                }
+            }
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            containerColor = AppTheme.Background2
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(label(option), color = AppTheme.TextPrimary, fontSize = Sizes.Font) },
+                    modifier = Modifier.height(Sizes.TextField),
+                    onClick = { onSelect(option) }
+                )
             }
         }
     }
