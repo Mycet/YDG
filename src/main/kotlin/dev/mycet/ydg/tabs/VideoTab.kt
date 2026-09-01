@@ -239,7 +239,8 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                                                 CommandManager.downloadVideo(
                                                     url = details!!.url,
                                                     title = editedTitle,
-                                                    format = fmt.formatId,
+                                                    formatId = fmt.formatId,
+                                                    ext = fmt.ext,
                                                     onProgress = { onProgress(it) }
                                                 )
                                             }
