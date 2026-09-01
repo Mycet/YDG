@@ -60,14 +60,20 @@ object CommandManager {
     suspend fun downloadVideo(
         url: String,
         title: String,
-        format: String,
+        formatId: String,
+        ext: String,
         onProgress: (String) -> Unit
     ) {
         val ytDlp = ytDlpPath()
+        // al parecer yt es MIERDA y no usa mp4 a secas para los videos, usa tanto mp4 como m4a, por eso descargar mp4 a secas no tenia audio
+        // al mandarle mp4 al yt-dlp, este devuelve el mejor stream con extension mp4 pero sin el audio
+
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
             val outputTitle = title.ifEmpty { "%(title)s" }
             addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
-            addAll(listOf("--format", format.lowercase()))
+            addAll(listOf("--format", "$formatId+bestaudio/best"))
+            addAll(listOf("--merge-output-format", ext.lowercase().trim())) // mergeada de m4a con mp4 bv
+            addAll(listOf("--ffmpeg-location", Prefs.ffmpegFolder))
 
             add("--add-metadata")
             add("--embed-thumbnail")

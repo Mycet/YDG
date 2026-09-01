@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,15 +17,52 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.mycet.ydg.objects.Dependencies
 import dev.mycet.ydg.objects.Prefs
 import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.objects.Dependencies
 import dev.mycet.ydg.utils.BevelButton
 import dev.mycet.ydg.ytdownload.CommandManager
+import javafx.application.Platform
+import javafx.stage.DirectoryChooser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
-import javax.swing.JFileChooser
+import java.util.concurrent.CompletableFuture
+
+object NativeFolderPicker {
+    private var started = false
+
+    @Synchronized
+    private fun ensureStarted() {
+        if (!started) {
+            runCatching { Platform.startup {} }
+            Platform.setImplicitExit(false)
+            started = true
+        }
+    }
+
+    fun pickFolder(title: String, initialDir: String? = null): String? {
+        ensureStarted();
+        val future = CompletableFuture<String>() // al parecer es una variable que es independiente de la asincronia de hilos
+        // es decir, deja que el resto de la funcion trabaje sin bloquear el hilo esperando por un valor
+        // en este caso el valor es la carpeta que llegue a seleccionar
+
+        Platform.runLater {
+            val chooser = DirectoryChooser().apply { //otra cosa de manejar orden en hilos, aun que este especificamente espera a que se cumpla
+                // algo dentro del hilo para ser ejecutado
+
+                this.title = title
+                initialDir?.takeIf { File(it).isDirectory }?.let { path ->
+                    initialDirectory = File(path)
+                }
+            }
+
+            future.complete(chooser.showDialog(null)?.absolutePath) //asignar valor al future (direccion de la carpeta)
+        }
+        return future.get()
+        // osea la secuencia es future ->, platform LLAMADO pero no ejecutado, future.complete, y luego la ejecucion del platform
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,14 +84,12 @@ fun SetupTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
             onValueChange = { downloadFolder = it; Prefs.downloadFolder = it },
             onClear = { downloadFolder = ""; Prefs.downloadFolder = "" },
             onLocate = {
-                val chooser = JFileChooser().apply {
-                    fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                    dialogTitle = "Select downloads destination folder..."
-                }
-
-                if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                    downloadFolder = chooser.selectedFile.absolutePath
-                    Prefs.downloadFolder = downloadFolder
+                NativeFolderPicker.pickFolder(
+                    title = "Set downloads destination folder: ",
+                    initialDir = downloadFolder
+                )?.let {
+                    downloadFolder = it
+                    Prefs.downloadFolder = it
                 }
             },
             placeholder = "Select downloads destination folder..."
@@ -67,14 +102,12 @@ fun SetupTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
             onValueChange = { ytDlpFolder = it; Prefs.ytDlpFolder = it },
             onClear = { ytDlpFolder = ""; Prefs.ytDlpFolder = "" },
             onLocate = {
-                val chooser = JFileChooser().apply {
-                    fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                    dialogTitle = "Select yt-dlp destination folder..."
-                }
-
-                if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                    ytDlpFolder = chooser.selectedFile.absolutePath
-                    Prefs.ytDlpFolder = ytDlpFolder
+                NativeFolderPicker.pickFolder(
+                    title = "Set downloads destination folder: ",
+                    initialDir = ytDlpFolder
+                )?.let {
+                    ytDlpFolder = it
+                    Prefs.ytDlpFolder = it
                 }
             },
             onDownload = {
@@ -107,14 +140,12 @@ fun SetupTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
             onValueChange = { ffmpegFolder = it; Prefs.ffmpegFolder = it },
             onClear = { ffmpegFolder = ""; Prefs.ffmpegFolder = "" },
             onLocate = {
-                val chooser = JFileChooser().apply {
-                    fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                    dialogTitle = "Select ffmpeg destination folder..."
-                }
-
-                if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                    ffmpegFolder = chooser.selectedFile.absolutePath
-                    Prefs.ffmpegFolder = ffmpegFolder
+                NativeFolderPicker.pickFolder(
+                    title = "Set downloads destination folder: ",
+                    initialDir = ffmpegFolder
+                )?.let {
+                    ffmpegFolder = it
+                    Prefs.ffmpegFolder = it
                 }
             },
             onDownload = {
