@@ -3,21 +3,9 @@ package dev.mycet.ydg.objects
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -30,7 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
 import java.net.URI
-import kotlin.math.roundToInt
 
 @Composable
 fun rememberThumbnail(url: String, videoId: String = ""): ImageBitmap? {
@@ -63,9 +50,8 @@ fun VideoCard(video: VideoInfo, onClick: () -> Unit = {}) {
         modifier = Modifier
             .width(160.dp)
             .fillMaxHeight()
-            .background(AppTheme.Surface)
+            .background(AppTheme.Background)
             .clickable { onClick() }
-            .padding(6.dp)
     ) {
         // Thumbnail
         if (thumbnail != null) {
@@ -82,7 +68,7 @@ fun VideoCard(video: VideoInfo, onClick: () -> Unit = {}) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp)
-                    .background(AppTheme.Surface2)
+                    .background(AppTheme.Background)
             )
         }
 
@@ -94,18 +80,6 @@ fun VideoCard(video: VideoInfo, onClick: () -> Unit = {}) {
             fontSize = 11.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // segundos a mm:ss
-        val totalSecs = video.duration.roundToInt()
-        val mins = totalSecs / 60
-        val secs = totalSecs % 60
-        Text(
-            text = "%d:%02d".format(mins, secs),
-            color = AppTheme.TextSecondary,
-            fontSize = 10.sp,
         )
     }
 }

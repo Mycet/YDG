@@ -57,7 +57,7 @@ fun AudioTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                     .weight(1f)  // ocupa todo el espacio restante de la fila
                     .height(26.dp)
                     .border(1.dp, AppTheme.Border2)
-                    .background(AppTheme.Background2),
+                    .background(AppTheme.Contrast),
                 decorationBox = { innerTextField ->
                     Box(
                         contentAlignment = Alignment.CenterStart,
@@ -114,7 +114,7 @@ fun AudioTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                         .fillMaxWidth()
                         .height(26.dp)
                         .border(1.dp, AppTheme.Border2)
-                        .background(AppTheme.Background2),
+                        .background(AppTheme.Contrast),
                     decorationBox = { innerTextField ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -133,7 +133,7 @@ fun AudioTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                 ExposedDropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
-                    containerColor = AppTheme.Background2
+                    containerColor = AppTheme.Contrast
                 ) {
                     formatList.forEach { option ->
                         DropdownMenuItem(
@@ -152,10 +152,10 @@ fun AudioTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppTheme.Background2)
+                .background(AppTheme.Contrast)
                 .drawBehind {
                     val s = 0.5.dp.toPx() // offset necesario para trazar la linea
-                    val color = AppTheme.Border1
+                    val color = AppTheme.Accent
                     val w = s * 2 // grosor de la linea
 
                     // Izquierdo, derecho, superior, inferior

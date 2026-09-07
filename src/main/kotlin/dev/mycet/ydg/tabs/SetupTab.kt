@@ -87,7 +87,7 @@ fun SetupTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                 NativeFolderPicker.pickFolder(
                     title = "Set downloads destination folder: ",
                     initialDir = downloadFolder
-                )?.let {
+                )?.let { // .let permite hacer algo con el valor nullable devuelto si no es nulo
                     downloadFolder = it
                     Prefs.downloadFolder = it
                 }
@@ -191,7 +191,7 @@ fun FolderRow(
                 .weight(1f)
                 .height(26.dp)
                 .border(1.dp, AppTheme.Border2)
-                .background(AppTheme.Background2),
+                .background(AppTheme.Contrast),
             decorationBox = { innerTextField ->
                 Box(
                     contentAlignment = Alignment.CenterStart,

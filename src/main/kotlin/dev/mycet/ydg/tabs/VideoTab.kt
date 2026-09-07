@@ -1,40 +1,33 @@
 package dev.mycet.ydg.tabs
 
-import androidx.compose.foundation.HorizontalScrollbar
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.mycet.ydg.objects.*
 import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.objects.VideoCard
-import dev.mycet.ydg.objects.VideoDetails
-import dev.mycet.ydg.objects.VideoFormat
-import dev.mycet.ydg.objects.VideoInfo
-import dev.mycet.ydg.objects.rememberThumbnail
 import dev.mycet.ydg.utils.BevelButton
+import dev.mycet.ydg.utils.BevelContainer
 import dev.mycet.ydg.utils.Sizes
 import dev.mycet.ydg.ytdownload.CommandManager
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -64,9 +57,42 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
         if (videoURL.startsWith("http")) {
             isLoadingList = true
             delay(800.milliseconds)
-            previewItems = CommandManager.fetchVideoInfo(videoURL)
-            isLoadingList = false
-        } else {
+
+            val isPlaylist = videoURL.contains("list=") || videoURL.contains("/playlist")
+            if (isPlaylist) {
+                val hasVideoId = videoURL.contains("watch?v=")
+                if (hasVideoId) { // Es link de playlist desde un video
+                    isLoadingDetails = true;
+
+                    val listDeferred = async { CommandManager.fetchVideoInfo(videoURL) }
+                    val detailsDeferred = async { CommandManager.fetchVideoDetails(videoURL) }
+                    val fetchedDetails = detailsDeferred.await()
+                    if (fetchedDetails != null) {
+                        detailsCache[fetchedDetails.id] = fetchedDetails
+                        details = fetchedDetails
+                        editedTitle = fetchedDetails.title
+                        selectedExt = fetchedDetails.videoExtensions.firstOrNull() ?: ""
+                        selectedFormat = fetchedDetails.videoFormatsForExt(selectedExt).firstOrNull()
+                        detailsLoadedForId = fetchedDetails.id
+                    }
+                    previewItems = listDeferred.await()
+
+                } else // Es solo playlist, sin video en específico
+                    previewItems = CommandManager.fetchVideoInfo(videoURL)
+
+            } else { // Es video individual
+                isLoadingDetails = true;
+                val fetchedDetails = CommandManager.fetchVideoDetails(videoURL)
+                if (fetchedDetails != null) {
+                    detailsCache[fetchedDetails.id] = fetchedDetails
+                    details = fetchedDetails
+                    editedTitle = fetchedDetails.title
+                    selectedExt = fetchedDetails.videoExtensions.firstOrNull() ?: ""
+                    selectedFormat = fetchedDetails.videoFormatsForExt(selectedExt).firstOrNull()
+                    detailsLoadedForId = fetchedDetails.id
+                }
+            }
+            isLoadingDetails = false;
             isLoadingList = false
         }
     }
@@ -81,7 +107,7 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
         val fetched = CommandManager.fetchVideoDetails(first.url)
         if (fetched != null) {
             details = fetched
-            editedTitle = fetched.title ?: ""
+            editedTitle = fetched.title
             selectedExt = fetched.videoExtensions.firstOrNull() ?: ""
             selectedFormat = fetched.videoFormatsForExt(selectedExt).firstOrNull()
             detailsLoadedForId = first.id
@@ -97,7 +123,7 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize() // que ocupe todo el espacio
-            .padding(horizontal = 8.dp, vertical = 6.dp), // separación desde los bordes
+            .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 6.dp), // separación desde los bordes
         verticalArrangement = Arrangement.spacedBy(4.dp) // espaciado vertical entre elementos
     ) {
         // Fila 1 — URL
@@ -107,55 +133,48 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                 .height(28.dp) // ancho fijo para todos los elementos de la fila
                 .padding(horizontal = 20.dp)
         ) {
-            // BasicTextField permite mayor control que TextField
-            BasicTextField(
-                value = videoURL,
-                onValueChange = {
-                    videoURL = it
-                }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
-                textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.Font),
-                cursorBrush = SolidColor(AppTheme.TextPrimary),
-                singleLine = true,
+            BevelContainer(
                 modifier = Modifier
                     .weight(1f)  // ocupa todo el espacio restante de la fila
-                    .height(Sizes.TextField)
-                    .border(1.dp, AppTheme.Border2)
-                    .background(AppTheme.Background2),
-                decorationBox = { innerTextField ->
-                    Box(
-                        contentAlignment = Alignment.CenterStart,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 6.dp)
-                    ) {
-                        if (videoURL.isEmpty()) {
-                            // Texto que muestra cuando el campo está vacío
-                            Text(
-                                "Insert link here",
-                                color = AppTheme.TextSecondary,
-                                fontSize = Sizes.Font
-                            )
+                    .height(Sizes.TextField),
+            ) {
+                // BasicTextField permite mayor control que TextField
+                BasicTextField(
+                    modifier = Modifier.fillMaxSize(),
+                    value = videoURL,
+                    onValueChange = {
+                        videoURL = it
+                    }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
+                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.Font),
+                    cursorBrush = SolidColor(AppTheme.TextPrimary),
+                    singleLine = true,
+                    decorationBox = { innerTextField ->
+                        Box(
+                            contentAlignment = Alignment.CenterStart,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp)
+                        ) {
+                            if (videoURL.isEmpty()) {
+                                // Texto que muestra cuando el campo está vacío
+                                Text(
+                                    "Insert link here",
+                                    color = AppTheme.TextSecondary,
+                                    fontSize = Sizes.Font
+                                )
+                            }
+                            innerTextField()  // el campo de texto real va acá adentro
                         }
-                        innerTextField()  // el campo de texto real va acá adentro
                     }
-                }
-            )
+                )
+            }
         }
 
         // Fila 2 — Elementos
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppTheme.Background2)
-                .drawBehind {
-                    val s = 0.5.dp.toPx()
-                    val color = AppTheme.Border1
-                    val w = s * 2
-                    drawLine(color, Offset(s, 0f), Offset(s, size.height), w)
-                    drawLine(color, Offset(size.width - s, 0f), Offset(size.width - s, size.height), w)
-                    drawLine(color, Offset(0f, s), Offset(size.width, s), w)
-                    drawLine(color, Offset(0f, size.height - s), Offset(size.width, size.height - s), w)
-                }
+                .background(AppTheme.Background)
                 .padding(2.dp)
         ) {
             when {
@@ -197,14 +216,15 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                                     modifier = Modifier
                                         .size(240.dp)
                                         .fillMaxHeight()
-                                        .background(AppTheme.Surface2)
+                                        .background(AppTheme.Background)
+                                        .clip(RoundedCornerShape(12.dp))
                                 ) {
                                     if (thumbnail != null) {
                                         Image(
                                             bitmap = thumbnail,
                                             contentDescription = "",
                                             contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier.fillMaxSize(),
                                         )
                                     }
 
@@ -256,24 +276,29 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                                 ) {
                                     // Titulo editable
                                     PropRow(label = "Title") {
-                                        BasicTextField(
-                                            value = editedTitle,
-                                            onValueChange = { editedTitle = it },
-                                            textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.Font),
-                                            cursorBrush = SolidColor(AppTheme.TextPrimary),
-                                            singleLine = true,
+                                        BevelContainer(
                                             modifier = Modifier
-                                                .weight(1f)
+                                                .width(400.dp)
                                                 .height(Sizes.TextField)
-                                                .border(1.dp, AppTheme.Border2)
-                                                .background(AppTheme.Background2),
-                                            decorationBox = { innerTextField ->
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
-                                                    contentAlignment = Alignment.CenterStart
-                                                ) { innerTextField() }
-                                            }
-                                        )
+                                        ) {
+                                            BasicTextField(
+                                                value = editedTitle,
+                                                onValueChange = { editedTitle = it },
+                                                textStyle = TextStyle(
+                                                    color = AppTheme.TextPrimary,
+                                                    fontSize = Sizes.Font
+                                                ),
+                                                cursorBrush = SolidColor(AppTheme.TextPrimary),
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxSize(),
+                                                decorationBox = { innerTextField ->
+                                                    Box(
+                                                        modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                                                        contentAlignment = Alignment.CenterStart
+                                                    ) { innerTextField() }
+                                                }
+                                            )
+                                        }
                                     }
 
                                     // Dropdown formato (ext)
@@ -416,33 +441,35 @@ private fun <T> SimpleDropdown(
         onExpandedChange = onExpandedChange,
         modifier = Modifier.width(200.dp).height(Sizes.TextField)
     ) {
-        BasicTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
-            textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
-            cursorBrush = SolidColor(Color.Transparent),
+        BevelContainer(
             modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                 .fillMaxWidth()
-                .height(Sizes.TextField)
-                .border(1.dp, AppTheme.Border2)
-                .background(AppTheme.Background2),
-            decorationBox = { innerTextField ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
-                ) {
-                    Box(Modifier.weight(1f)) { innerTextField() }
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                .height(Sizes.TextField),
+        ) {
+            BasicTextField(
+                modifier = Modifier.fillMaxSize(),
+                value = value,
+                onValueChange = {},
+                readOnly = true,
+                textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
+                cursorBrush = SolidColor(Color.Transparent),
+                decorationBox = { innerTextField ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
+                    ) {
+                        Box(Modifier.weight(1f)) { innerTextField() }
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    }
                 }
-            }
-        )
+            )
+        }
 
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { onExpandedChange(false) },
-            containerColor = AppTheme.Background2
+            containerColor = AppTheme.Contrast
         ) {
             options.forEach { option ->
                 DropdownMenuItem(

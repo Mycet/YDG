@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -26,9 +27,9 @@ fun BevelButton(
     height: Dp = 26.dp,
     fontSize: TextUnit = 13.sp,
     textColor: Color = AppTheme.TextPrimary,
-    dark: Color = AppTheme.Border1,
-    light: Color = AppTheme.Surface2,
-    fill: Color = AppTheme.Surface,
+    dark: Color = AppTheme.Accent,
+    light: Color = AppTheme.Background,
+    fill: Color = AppTheme.Contrast,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -36,7 +37,7 @@ fun BevelButton(
         modifier = modifier
             .height(height)
             .wrapContentWidth()
-            .background(dark)
+            .background(dark, RoundedCornerShape(8.dp))
             .padding(1.dp)
     ) {
         Box(
@@ -44,7 +45,7 @@ fun BevelButton(
             modifier = Modifier
                 .wrapContentWidth()
                 .fillMaxHeight()
-                .background(light)
+                .background(light, RoundedCornerShape(8.dp))
                 .padding(1.dp)
         ) {
             Box(
@@ -52,7 +53,7 @@ fun BevelButton(
                 modifier = Modifier
                     .wrapContentWidth()
                     .fillMaxHeight()
-                    .background(fill)
+                    .background(fill, RoundedCornerShape(8.dp))
                     .clickable(
                         onClick = onClick,
                         interactionSource = interactionSource,
@@ -70,6 +71,39 @@ fun BevelButton(
                 } else
                     Text(text, color = textColor, fontSize = fontSize)
             }
+        }
+    }
+}
+
+@Composable
+fun BevelContainer(
+    modifier: Modifier = Modifier,
+    dark: Color = AppTheme.Accent,
+    light: Color = AppTheme.Background,
+    fill: Color = AppTheme.Contrast,
+    cornerRadius: Dp = 6.dp,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val shape = RoundedCornerShape(cornerRadius)
+
+    Box(
+        modifier = modifier
+            .background(dark, shape)
+            .padding(1.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(light, shape)
+                .padding(1.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(fill, shape),
+                contentAlignment = Alignment.CenterStart,
+                content = content
+            )
         }
     }
 }

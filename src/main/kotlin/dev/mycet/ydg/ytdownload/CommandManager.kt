@@ -7,7 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -133,12 +132,7 @@ object CommandManager {
                 while (linea != null) {
                     if (linea.startsWith("{")) { // JSON
                         try {
-                            if (linea.startsWith("{")) {
-                                println("DURATION RAW: ${Json.parseToJsonElement(linea).jsonObject["duration"]}")
-                                // ... resto igual
-                            }
-                            val info = json
-                                .decodeFromString<VideoInfo>(linea)
+                            val info = json.decodeFromString<VideoInfo>(linea)
                             results.add(info)
                         } catch (ex: Exception) {}
                     }
@@ -155,7 +149,7 @@ object CommandManager {
     suspend fun fetchVideoDetails(url: String): VideoDetails? {
         return withContext(Dispatchers.IO) {
             try {
-                val proceso = ProcessBuilder(listOf(ytDlpPath(), "--dump-json", url))
+                val proceso = ProcessBuilder(listOf(ytDlpPath(), "--dump-json", "--no-playlist", url))
                     .redirectErrorStream(true)
                     .start()
 
@@ -163,7 +157,6 @@ object CommandManager {
                 proceso.waitFor()
 
                 val line = output.lines().firstOrNull { it.startsWith("{") } ?: return@withContext null
-                println("DETAILS DURATION RAW: ${Json.parseToJsonElement(line).jsonObject["duration"]}")
                 json.decodeFromString<VideoDetails>(line)
 
             } catch (ex: Exception) {
