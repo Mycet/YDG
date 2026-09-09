@@ -19,7 +19,11 @@ data class VideoDetails(
         .distinct()
         .sorted()
     fun videoFormatsForExt(ext: String): List<VideoFormat> = formats
-        .filter { it.isVideoFormat && it.ext == ext}
+        .filter { it.isVideoFormat
+                && it.ext == ext
+                && (it.effectiveSize ?: 0L) > 0L // Filtra los formatos sin tamaño (0 KB)
+                && !(it.note?.contains("Premium", ignoreCase = true) ?: false) // Filtra los formatos premium
+        }
         .groupBy { it.note }
         .mapValues { (_,group) -> group.maxByOrNull { it.effectiveSize ?: 0L }!! }
         .values

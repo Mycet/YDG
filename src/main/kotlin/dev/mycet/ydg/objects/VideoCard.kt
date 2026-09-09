@@ -4,9 +4,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -48,7 +50,7 @@ fun VideoCard(video: VideoInfo, onClick: () -> Unit = {}) {
 
     Column(
         modifier = Modifier
-            .width(160.dp)
+            .width(120.dp)
             .fillMaxHeight()
             .background(AppTheme.Background)
             .clickable { onClick() }
@@ -60,14 +62,17 @@ fun VideoCard(video: VideoInfo, onClick: () -> Unit = {}) {
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp)
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(12.dp))
+//                    .fillMaxWidth()
+//                    .height(90.dp)
             )
         } else {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp)
+                    .size(120.dp)
+//                    .fillMaxWidth()
+//                    .height(90.dp)
                     .background(AppTheme.Background)
             )
         }

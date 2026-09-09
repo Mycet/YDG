@@ -362,7 +362,7 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                             ) {
                                 LazyRow(
                                     state = scrollState,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                         .pointerInput(Unit) {
                                             awaitPointerEventScope {
@@ -447,23 +447,21 @@ private fun <T> SimpleDropdown(
                 .fillMaxWidth()
                 .height(Sizes.TextField),
         ) {
-            BasicTextField(
-                modifier = Modifier.fillMaxSize(),
-                value = value,
-                onValueChange = {},
-                readOnly = true,
-                textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
-                cursorBrush = SolidColor(Color.Transparent),
-                decorationBox = { innerTextField ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
-                    ) {
-                        Box(Modifier.weight(1f)) { innerTextField() }
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                    }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
+            ) {
+                Text(
+                    text = value,
+                    color = AppTheme.TextPrimary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.weight(1f)
+                )
+
+                CompositionLocalProvider(LocalContentColor provides AppTheme.Accent) {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 }
-            )
+            }
         }
 
         ExposedDropdownMenu(
