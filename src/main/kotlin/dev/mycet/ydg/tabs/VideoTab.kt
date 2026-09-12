@@ -35,7 +35,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
+fun VideoTab(scope: CoroutineScope, onNewDownload: (String) -> DownloadTask) {
     var videoURL by remember { mutableStateOf("") }
     var previewItems by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
     var isLoadingList by remember { mutableStateOf(false) }
@@ -95,24 +95,6 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
             isLoadingDetails = false;
             isLoadingList = false
         }
-    }
-
-    // Cuando llega la lista, cargar los detalles del primero
-    LaunchedEffect(previewItems) {
-        val first = previewItems.firstOrNull() ?: return@LaunchedEffect
-        if (detailsLoadedForId == first.id) return@LaunchedEffect
-
-        isLoadingDetails = true
-
-        val fetched = CommandManager.fetchVideoDetails(first.url)
-        if (fetched != null) {
-            details = fetched
-            editedTitle = fetched.title
-            selectedExt = fetched.videoExtensions.firstOrNull() ?: ""
-            selectedFormat = fetched.videoFormatsForExt(selectedExt).firstOrNull()
-            detailsLoadedForId = first.id
-        }
-        isLoadingDetails = false
     }
 
     // Cuando llega el primero, resetear calidad seleccionada
@@ -254,6 +236,7 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                                         text = "Download",
                                         modifier = Modifier.padding(top = 10.dp),
                                         onClick = {
+                                            val task = onNewDownload(editedTitle)
                                             scope.launch {
                                                 val fmt = selectedFormat ?: return@launch
                                                 CommandManager.downloadVideo(
@@ -261,8 +244,9 @@ fun VideoTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                                                     title = editedTitle,
                                                     formatId = fmt.formatId,
                                                     ext = fmt.ext,
-                                                    onProgress = { onProgress(it) }
+                                                    onProgress = { line -> task.updateFromLog(line) }
                                                 )
+                                                task.isDone = true
                                             }
                                         }
                                     )

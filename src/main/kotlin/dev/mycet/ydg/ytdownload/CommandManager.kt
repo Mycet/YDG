@@ -109,7 +109,11 @@ object CommandManager {
         ejecutar(comando, onProgress)
     }
 
-    suspend fun fetchVideoInfo(url: String, playlistStart: Int = 1, playlistEnd: Int = 50): List<VideoInfo> {
+    suspend fun fetchVideoInfo(
+        url: String,
+        playlistStart: Int = 1,
+        playlistEnd: Int = 50,
+    ): List<VideoInfo> {
         return withContext(Dispatchers.IO) {
             try {
                 val comando = mutableListOf(

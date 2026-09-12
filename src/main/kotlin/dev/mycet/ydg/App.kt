@@ -1,18 +1,32 @@
 package dev.mycet.ydg
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.objects.Dependencies
+import dev.mycet.ydg.objects.DownloadTask
 import dev.mycet.ydg.objects.Prefs
 import dev.mycet.ydg.tabs.*
 import dev.mycet.ydg.utils.AppTheme
+import dev.mycet.ydg.utils.BevelContainer
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
 
 // 'recomposición' se le llama al llamado de una función
 // La UI se dibuja llamando a funciones, si algo cambia en la UI, Compose vuelve a llamar a la función
@@ -25,23 +39,9 @@ fun App() {
         AppTab.match(if (Prefs.startupTab == "Last Used") Prefs.lastActiveTab else Prefs.startupTab)
     )}
     var setupWarning by remember { mutableStateOf("") }
-    var statusText by remember { mutableStateOf("") } // log
-    var progress by remember { mutableStateOf(0f) }  // 0.0 a 1.0
 
-    // Parsea el porcentaje del output de yt-dlp o downloadFile
-    // yt-dlp imprime "[download]  45.3% of ..."
-    // downloadFile imprime "Downloading... 45% ..."
-    fun parseProgress(line: String): Float { // pide String y devuelve Float
-        val match = Regex("""(\d+(?:\.\d+)?)%""").find(line)
-        return match?.groupValues?.get(1)?.toFloatOrNull()?.div(100f) ?: progress
-    }
-
-    val onProgress: (String) -> Unit = { line ->
-        statusText = line
-        progress = parseProgress(line)
-    }
+    val downloads = remember { mutableStateListOf<DownloadTask>() }
     val scope = rememberCoroutineScope()
-    val tabWidth = 90.dp  // tiene que coincidir con el width de los tabs en TabBar
 
     // LaunchedEffect ejecuta el código cada vez que la variable pasada como argumento cambie
     // Al pasarle Unit (void), se ejecuta 1 sola vez al arrancar el programa
@@ -51,68 +51,147 @@ fun App() {
             setupWarning = "⚠ " + issues.joinToString(" · ")
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppTheme.Background)              // El marco exterior
-            .padding(top = 4.dp, bottom = 4.dp, end = 12.dp)      // El "grosor" del marco
-    ) {
-        // Barra de tabs arriba
-        TabBar(
-            selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it },
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(AppTheme.Background)              // El marco exterior
+                .padding(top = 4.dp, bottom = 4.dp, end = 12.dp)      // El "grosor" del marco
+        ) {
+            // Barra de tabs arriba
+            TabBar(
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it },
+            )
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Contenido según el tab seleccionado
-            Box(
-                modifier = Modifier
-                    .weight(1f) // ocupa todo el espacio restante
-                    .fillMaxSize()
-                    .background(AppTheme.Background)
-                    .padding(2.dp)
-            ) {
-                when (selectedTab) {
-                    AppTab.VIDEO -> VideoTab(scope, onProgress = onProgress)
-                    AppTab.AUDIO -> AudioTab(scope, onProgress = onProgress)
-                    AppTab.SETUP -> SetupTab(scope, onProgress = onProgress)
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Contenido según el tab seleccionado
+                Box(
+                    modifier = Modifier
+                        .weight(1f) // ocupa todo el espacio restante
+                        .fillMaxSize()
+                        .background(AppTheme.Background)
+                        .padding(2.dp)
+                ) {
+                    when (selectedTab) {
+                        AppTab.VIDEO -> VideoTab(scope, onNewDownload = { title ->
+                            val task = DownloadTask(title)
+                            downloads.add(task)
+                            task
+                        })
+
+                        AppTab.AUDIO -> {}
+                        //AppTab.AUDIO -> AudioTab(scope, onProgress = {})
+                        AppTab.SETUP -> SetupTab(scope, onProgress = {})
+                    }
+                }
+
+                // Barra inferior de errores
+                if (setupWarning.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(24.dp)
+                            .background(AppTheme.Background)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            text = setupWarning,
+                            color = AppTheme.ProgressBarError,
+                            fontSize = 13.sp,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
+        }
 
-            // Barra de progreso inferior — siempre visible
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(24.dp)
-                    .background(AppTheme.Background)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier
-                        .width(120.dp)
-                        .height(8.dp),
-                    color = AppTheme.ProgressBar,
-                    backgroundColor = AppTheme.Contrast
-                )
+        DownloadQueueOverlay(downloads, modifier = Modifier.align(Alignment.TopEnd).padding(bottom = 16.dp, end = 24.dp))
+    }
+}
 
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = statusText,
-                    color = AppTheme.TextSecondary,
-                    fontSize = 11.sp,
-                    maxLines = 1
-                )
+@Composable
+fun DownloadQueueOverlay(downloads: MutableList<DownloadTask>, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.width(300.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        downloads.takeLast(4).forEach { task ->
+            // key(task.id) es para que cada task tenga su propio id, para que no se repitan ni se asigne por el orden
+            key(task.id) {
 
-                if (setupWarning.isNotEmpty()) {
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = setupWarning,
-                        color = AppTheme.ProgressBarError,
-                        fontSize = 13.sp,
-                        maxLines = 1
-                    )
+                LaunchedEffect(task.isDone, task.hasError) {
+                    if (task.isDone || task.hasError) {
+                        delay(7.seconds)
+                        task.isVisible = false
+                        delay(0.5.seconds)
+                        downloads.remove(task)
+                    }
+                }
+
+
+                val transitionState = remember { MutableTransitionState(false) }
+                transitionState.targetState = task.isVisible
+
+                AnimatedVisibility(
+                    visibleState = transitionState,
+                    enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn() + expandVertically(),
+                    exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(animationSpec = tween(400))
+                ) {
+                    BevelContainer(modifier = Modifier.fillMaxWidth().height(60.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = task.title,
+                                color = AppTheme.TextPrimary,
+                                fontSize = 12.sp,
+                                maxLines = 1
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                val statusStr = when {
+                                    task.hasError -> "Error"
+                                    task.isDone -> "Done"
+                                    else -> "${(task.progress * 100).toInt()}%"
+                                }
+                                Text(text = statusStr, color = AppTheme.TextSecondary, fontSize = 10.sp)
+
+                                if (task.sizeText.isNotEmpty()) {
+                                    if (task.isDone)
+                                        Text(
+                                            text = "Final: ~${task.sizeText}",
+                                            color = AppTheme.TextSecondary,
+                                            fontSize = 10.sp
+                                        )
+                                    else
+                                        Text(
+                                            text = "${task.sizeText} - ${task.speed}",
+                                            color = AppTheme.TextSecondary,
+                                            fontSize = 10.sp
+                                        )
+                                }
+                            }
+
+                            LinearProgressIndicator(
+                                progress = if (task.isDone) 1f else task.progress,
+                                modifier = Modifier.fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp)),
+                                color = if (task.hasError) AppTheme.ProgressBarError else AppTheme.Accent,
+                                backgroundColor = AppTheme.Contrast
+                            )
+                        }
+                    }
                 }
             }
         }
