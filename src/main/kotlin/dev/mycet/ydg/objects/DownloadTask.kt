@@ -5,16 +5,35 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.util.UUID
 
-class DownloadTask(val title: String) {
-    val id: String = UUID.randomUUID().toString()
+interface DownloadItem {
+    val id: String
+    val title: String
+    var progress: Float
+    var sizeText: String
+    var speed: String
+    var isDone: Boolean
+    var hasError: Boolean
+    var isVisible: Boolean
+}
 
-    var progress by mutableStateOf(0f)
-    var sizeText by mutableStateOf("")
-    var speed by mutableStateOf("")
-    var isDone by mutableStateOf(false)
-    var hasError by mutableStateOf(false)
+class SimpleTask(override var title: String): DownloadItem {
+    override val id: String = UUID.randomUUID().toString()
+    override var progress by mutableStateOf(0f)
+    override var sizeText by mutableStateOf("")
+    override var speed by mutableStateOf("")
+    override var isDone by mutableStateOf(false)
+    override var hasError by mutableStateOf(false)
+    override var isVisible by mutableStateOf(true)
+}
 
-    var isVisible by mutableStateOf(true)
+class DownloadTask(override val title: String): DownloadItem {
+    override val id: String = UUID.randomUUID().toString()
+    override var progress by mutableStateOf(0f)
+    override var sizeText by mutableStateOf("")
+    override var speed by mutableStateOf("")
+    override var isDone by mutableStateOf(false)
+    override var hasError by mutableStateOf(false)
+    override var isVisible by mutableStateOf(true)
 
     private var filesDownloadingCount = 0
     private var phase1SizeMiB = 0f

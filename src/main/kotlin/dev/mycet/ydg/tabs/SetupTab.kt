@@ -18,7 +18,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.objects.Dependencies
+import dev.mycet.ydg.objects.DownloadTask
 import dev.mycet.ydg.objects.Prefs
+import dev.mycet.ydg.objects.SimpleTask
 import dev.mycet.ydg.utils.AppTheme
 import dev.mycet.ydg.utils.BevelButton
 import dev.mycet.ydg.ytdownload.CommandManager
@@ -66,7 +68,7 @@ object NativeFolderPicker {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SetupTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
+fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
     var downloadFolder by remember { mutableStateOf(Prefs.downloadFolder) }
     var ytDlpFolder by remember { mutableStateOf(Prefs.ytDlpFolder) }
     var ffmpegFolder by remember { mutableStateOf(Prefs.ffmpegFolder) }
@@ -111,23 +113,36 @@ fun SetupTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                 }
             },
             onDownload = {
+                val task = onNewTask("Downloading yt-dlp...")
+
                 scope.launch {
-                    if (ytDlpFolder.isEmpty()) {
-                        onProgress("Select a folder first")
-                        return@launch // equivalente al "return;"
+                    // Si está vacío, usa la carpeta 'bin' donde se ejecuta la app
+                    val targetFolder = ytDlpFolder.ifEmpty {
+                        File(System.getProperty("user.dir"), "bin").absolutePath
                     }
 
+                    if (ytDlpFolder.isEmpty()) {
+                        ytDlpFolder = targetFolder
+                        Prefs.ytDlpFolder = targetFolder
+                    }
+
+                    File(targetFolder).mkdirs() // lo crea si no existe
+
                     if (Dependencies.ytDlpExists()) { // Ya existe, actualizar
-                        onProgress("yt-dlp found, updating...")
-                        CommandManager.updateYtDlp(onProgress = { onProgress(it) })
+                        task.title = "Updating yt-dlp..."
+                        CommandManager.updateYtDlp(onProgress = { task.speed = it })
                     } else {
+                        task.title = "Downloading yt-dlp..."
                         val dest = "$ytDlpFolder${File.separator}yt-dlp.exe"
                         CommandManager.downloadFile(
                             url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
                             destPath = dest,
-                            onProgress = { onProgress(it) }
+                            onProgress = { task.speed = it }
                         )
                     }
+
+                    task.isDone = true
+                    task.progress = 1f
                 }
             },
             placeholder = "Select yt-dlp destination folder..."
@@ -149,15 +164,27 @@ fun SetupTab(scope: CoroutineScope, onProgress: (String) -> Unit) {
                 }
             },
             onDownload = {
+                val task = onNewTask("Downloading ffmpeg...")
+
                 scope.launch {
-                    if (ffmpegFolder.isEmpty()) {
-                        onProgress("Select a folder first")
-                        return@launch
+                    val taskFolder = ffmpegFolder.ifEmpty {
+                        File(System.getProperty("user.dir"), "bin").absolutePath
                     }
+
+                    if (ffmpegFolder.isEmpty()) {
+                        ffmpegFolder = taskFolder
+                        Prefs.ffmpegFolder = taskFolder
+                    }
+
+                    File(taskFolder).mkdirs()
+
                     CommandManager.downloadAndExtractFfmpeg(
                         destFolder = ffmpegFolder,
-                        onProgress = { onProgress(it) }
+                        onProgress = { task.speed = it }
                     )
+
+                    task.isDone = true
+                    task.progress = 1f
                 }
             },
             placeholder = "Select ffmpeg destination folder..."
@@ -188,7 +215,7 @@ fun FolderRow(
             cursorBrush = SolidColor(AppTheme.TextPrimary),
             singleLine = true,
             modifier = Modifier
-                .weight(1f)
+                .width(600.dp)
                 .height(26.dp)
                 .border(1.dp, AppTheme.Border2)
                 .background(AppTheme.Contrast),

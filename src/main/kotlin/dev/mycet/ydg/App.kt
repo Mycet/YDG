@@ -9,19 +9,24 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.objects.Dependencies
+import dev.mycet.ydg.objects.DownloadItem
 import dev.mycet.ydg.objects.DownloadTask
 import dev.mycet.ydg.objects.Prefs
+import dev.mycet.ydg.objects.SimpleTask
 import dev.mycet.ydg.tabs.*
 import dev.mycet.ydg.utils.AppTheme
 import dev.mycet.ydg.utils.BevelContainer
@@ -40,7 +45,7 @@ fun App() {
     )}
     var setupWarning by remember { mutableStateOf("") }
 
-    val downloads = remember { mutableStateListOf<DownloadTask>() }
+    val downloads = remember { mutableStateListOf<DownloadItem>() }
     val scope = rememberCoroutineScope()
 
     // LaunchedEffect ejecuta el código cada vez que la variable pasada como argumento cambie
@@ -82,7 +87,11 @@ fun App() {
 
                         AppTab.AUDIO -> {}
                         //AppTab.AUDIO -> AudioTab(scope, onProgress = {})
-                        AppTab.SETUP -> SetupTab(scope, onProgress = {})
+                        AppTab.SETUP -> SetupTab(scope, onNewTask = { title ->
+                            val task = SimpleTask(title)
+                            downloads.add(task)
+                            task
+                        })
                     }
                 }
 
@@ -114,7 +123,7 @@ fun App() {
 }
 
 @Composable
-fun DownloadQueueOverlay(downloads: MutableList<DownloadTask>, modifier: Modifier = Modifier) {
+fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.width(300.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -122,6 +131,8 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadTask>, modifier: Modifie
         downloads.takeLast(4).forEach { task ->
             // key(task.id) es para que cada task tenga su propio id, para que no se repitan ni se asigne por el orden
             key(task.id) {
+                val interactionSource = remember { MutableInteractionSource() }
+                val isHovered by interactionSource.collectIsHoveredAsState()
 
                 LaunchedEffect(task.isDone, task.hasError) {
                     if (task.isDone || task.hasError) {
@@ -188,7 +199,7 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadTask>, modifier: Modifie
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
                                 color = if (task.hasError) AppTheme.ProgressBarError else AppTheme.Accent,
-                                backgroundColor = AppTheme.Contrast
+                                backgroundColor = if (isHovered) AppTheme.Contrast.copy(alpha = 0.60f) else AppTheme.Contrast,
                             )
                         }
                     }
