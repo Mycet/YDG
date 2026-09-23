@@ -37,18 +37,22 @@ object Prefs {
             properties.setProperty("downloadFolder", value)
             save()
         }
-
     var ytDlpFolder: String
         get() = properties.getProperty("ytDlpFolder", "")
         set(value) {
             properties.setProperty("ytDlpFolder", value)
             save()
         }
-
     var ffmpegFolder: String
         get() = properties.getProperty("ffmpegFolder", "")
         set(value) {
             properties.setProperty("ffmpegFolder", value)
+            save()
+        }
+    var denoFolder: String
+        get() = properties.getProperty("denoFolder", "")
+        set(value) {
+            properties.setProperty("denoFolder", value)
             save()
         }
 
@@ -62,6 +66,13 @@ object Prefs {
         get() = properties.getProperty("lastActiveTab", "VIDEO")
         set(value) {
             properties.setProperty("lastActiveTab", value)
+            save()
+        }
+
+    var browserForCookies: String
+        get() = properties.getProperty("browserForCookies", "")
+        set(value) {
+            properties.setProperty("browserForCookies", value)
             save()
         }
 }

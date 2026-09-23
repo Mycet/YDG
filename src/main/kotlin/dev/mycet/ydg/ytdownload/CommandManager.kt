@@ -60,23 +60,16 @@ object CommandManager {
         url: String,
         title: String,
         formatId: String,
-        ext: String,
+        extension: String,
         onProgress: (String) -> Unit
     ) {
         val ytDlp = ytDlpPath()
-        // al parecer yt es MIERDA y no usa mp4 a secas para los videos, usa tanto mp4 como m4a, por eso descargar mp4 a secas no tenia audio
-        // al mandarle mp4 al yt-dlp, este devuelve el mejor stream con extension mp4 pero sin el audio
-        // when eres el ceo
-        val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
+        val comando = mutableListOf(ytDlp).apply { // .apply permite modificar tras crear
             val outputTitle = title.ifEmpty { "%(title)s" }
             addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
             addAll(listOf("--format", "$formatId+bestaudio/best"))
-            addAll(listOf("--merge-output-format", ext.lowercase().trim())) // mergeada de m4a con mp4 bv
-            addAll(listOf("--ffmpeg-location", Prefs.ffmpegFolder))
-
-            add("--add-metadata")
-            add("--embed-thumbnail")
-            add(url)
+            addAll(listOf("--merge-output-format", extension.lowercase().trim()))
+            addCommonMediaArgs(url, this)
         }
 
         ejecutar(comando, onProgress);
@@ -84,24 +77,38 @@ object CommandManager {
 
     suspend fun downloadAudio(
         url: String,
+        title: String,
         format: String,
-        metadata: Boolean,
-        thumbnail: Boolean,
-        noPlayList: Boolean,
+        formatId: String,
+        bitrate: Int,
         onProgress: (String) -> Unit
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
-            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}%(title)s.%(ext)s"))
+            val outputTitle = title.ifEmpty { "%(title)s" }
+            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
+            addAll(listOf("--format", formatId))
             addAll(listOf("--extract-audio", "--audio-format", format.lowercase()))
-
-            if (metadata) add("--add-metadata")
-            if (thumbnail) add("--embed-thumbnail")
-            if (noPlayList) add("--no-playlist")
-            add(url)
+            addAll(listOf("--audio-quality", "${bitrate}K"))
+            addCommonMediaArgs(url, this)
         }
 
         ejecutar(comando, onProgress);
+    }
+
+    fun addCommonMediaArgs(url: String, cmd: MutableList<String>) {
+        cmd.addAll(listOf("--ffmpeg-location", Prefs.ffmpegFolder))
+
+        if (Prefs.browserForCookies.isNotBlank())
+            cmd.addAll(listOf("--cookies-from-browser", Prefs.browserForCookies.trim().lowercase()))
+
+        val denoExe = "${Prefs.ffmpegFolder}${File.separator}deno.exe"
+        if (File(denoExe).exists())
+            cmd.addAll(listOf("--js-runtimes", denoExe))
+
+        cmd.add("--add-metadata")
+        cmd.add("--embed-thumbnail")
+        cmd.add(url)
     }
 
     suspend fun updateYtDlp(onProgress: (String) -> Unit) {
@@ -121,9 +128,17 @@ object CommandManager {
                     "--dump-json",
                     "--flat-playlist",
                     "--playlist-start", playlistStart.toString(),
-                    "--playlist-end", playlistEnd.toString(),
-                    url
-                )
+                    "--playlist-end", playlistEnd.toString()
+                ).apply {
+                    if (Prefs.browserForCookies.isNotBlank())
+                        addAll(listOf("--cookies-from-browser", Prefs.browserForCookies.trim().lowercase()))
+
+                    val denoExe = "${Prefs.ffmpegFolder}${File.separator}deno.exe"
+                    if (File(denoExe).exists())
+                        addAll(listOf("--js-runtimes", denoExe))
+
+                    add(url)
+                }
 
                 val proceso = ProcessBuilder(comando)
                     .redirectErrorStream(true)
@@ -153,7 +168,18 @@ object CommandManager {
     suspend fun fetchVideoDetails(url: String): VideoDetails? {
         return withContext(Dispatchers.IO) {
             try {
-                val proceso = ProcessBuilder(listOf(ytDlpPath(), "--dump-json", "--no-playlist", url))
+                val comando = mutableListOf(ytDlpPath(), "--dump-json", "--no-playlist").apply {
+                    if (Prefs.browserForCookies.isNotBlank())
+                        addAll(listOf("--cookies-from-browser", Prefs.browserForCookies.trim().lowercase()))
+
+                    val denoExe = "${Prefs.ffmpegFolder}${File.separator}deno.exe"
+                    if (File(denoExe).exists())
+                        addAll(listOf("--js-runtimes", denoExe))
+
+                    add(url)
+                }
+
+                val proceso = ProcessBuilder(comando)
                     .redirectErrorStream(true)
                     .start()
 
@@ -210,7 +236,7 @@ object CommandManager {
         }
     }
 
-    suspend fun downloadAndExtractFfmpeg(destFolder: String, onProgress: (String) -> Unit) {
+    suspend fun downloadFfmpeg(destFolder: String, onProgress: (String) -> Unit) {
         val zipPath = "$destFolder${File.separator}ffmpeg.zip"
 
         // Descarga el zip
@@ -242,6 +268,38 @@ object CommandManager {
 
                 withContext(Dispatchers.Swing) { onProgress("Done — ffmpeg.exe saved to $destFolder") }
 
+            } catch (ex: Exception) {
+                withContext(Dispatchers.Swing) { onProgress("Error: ${ex.message}") }
+            }
+        }
+    }
+
+    suspend fun downloadDeno(destFolder: String, onProgress: (String) -> Unit) {
+        val zipPath = "$destFolder${File.separator}deno.zip"
+
+        downloadFile(
+            url = "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip",
+            destPath = zipPath,
+            onProgress = onProgress
+        )
+        withContext(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Swing) { onProgress("Extracting deno.exe...") }
+                val zipFile = ZipFile(zipPath)
+
+                val entry = zipFile.entries().asSequence()
+                    .firstOrNull { it.name == "deno.exe" }
+                if (entry != null) {
+                    val input = zipFile.getInputStream(entry)
+                    val output = FileOutputStream("$destFolder${File.separator}deno.exe")
+                    input.copyTo(output)
+                    output.close()
+                    input.close()
+                }
+                zipFile.close()
+
+                File(zipPath).delete()
+                withContext(Dispatchers.Swing) { onProgress("Done — deno.exe saved to $destFolder") }
             } catch (ex: Exception) {
                 withContext(Dispatchers.Swing) { onProgress("Error: ${ex.message}") }
             }

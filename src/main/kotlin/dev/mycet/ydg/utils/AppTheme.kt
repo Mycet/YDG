@@ -18,7 +18,9 @@ object AppTheme {
 
     val Icon            = Color(0xff313852)
 
-    val Border2        = Color(0xff646464)
+    val Border1        = Accent
+    val Border2        = Color(0xff303c6a)
+    val Border3        = Color(0xff292f4d)
 
     val ProgressBar    = Color(0xff14aa05)
     val ProgressBarError = Color(0xffaa1405)

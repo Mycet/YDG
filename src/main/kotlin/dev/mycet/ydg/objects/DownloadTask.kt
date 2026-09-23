@@ -3,7 +3,7 @@ package dev.mycet.ydg.objects
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import java.util.UUID
+import java.util.*
 
 interface DownloadItem {
     val id: String

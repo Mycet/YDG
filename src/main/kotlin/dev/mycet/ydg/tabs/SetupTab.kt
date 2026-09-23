@@ -1,28 +1,38 @@
 package dev.mycet.ydg.tabs
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
+import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.objects.Dependencies
-import dev.mycet.ydg.objects.DownloadTask
 import dev.mycet.ydg.objects.Prefs
 import dev.mycet.ydg.objects.SimpleTask
 import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.BevelButton
+import dev.mycet.ydg.utils.Sizes
+import dev.mycet.ydg.utils.ui.BevelButton
+import dev.mycet.ydg.utils.ui.ActionIcon
+import dev.mycet.ydg.utils.ui.CollapsibleSection
+import dev.mycet.ydg.utils.ui.SimpleDropdown
+import dev.mycet.ydg.utils.ui.TooltipIcon
 import dev.mycet.ydg.ytdownload.CommandManager
 import javafx.application.Platform
 import javafx.stage.DirectoryChooser
@@ -72,6 +82,9 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
     var downloadFolder by remember { mutableStateOf(Prefs.downloadFolder) }
     var ytDlpFolder by remember { mutableStateOf(Prefs.ytDlpFolder) }
     var ffmpegFolder by remember { mutableStateOf(Prefs.ffmpegFolder) }
+    var denoFolder by remember { mutableStateOf(Prefs.denoFolder) }
+
+    var browserCookies by remember { mutableStateOf(Prefs.browserForCookies) }
 
     Column(
         modifier = Modifier
@@ -79,132 +92,172 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Fila 1 — Downloads Folder
-        FolderRow(
-            label = "Downloads folder:",
-            value = downloadFolder,
-            onValueChange = { downloadFolder = it; Prefs.downloadFolder = it },
-            onClear = { downloadFolder = ""; Prefs.downloadFolder = "" },
-            onLocate = {
-                NativeFolderPicker.pickFolder(
-                    title = "Set downloads destination folder: ",
-                    initialDir = downloadFolder
-                )?.let { // .let permite hacer algo con el valor nullable devuelto si no es nulo
-                    downloadFolder = it
-                    Prefs.downloadFolder = it
-                }
-            },
-            placeholder = "Select downloads destination folder..."
-        )
+        CollapsibleSection(title = "General") {
 
-        // Fila 2 — YT-DLP folder
-        FolderRow(
-            label = "YT-DLP:",
-            value = ytDlpFolder,
-            onValueChange = { ytDlpFolder = it; Prefs.ytDlpFolder = it },
-            onClear = { ytDlpFolder = ""; Prefs.ytDlpFolder = "" },
-            onLocate = {
-                NativeFolderPicker.pickFolder(
-                    title = "Set downloads destination folder: ",
-                    initialDir = ytDlpFolder
-                )?.let {
-                    ytDlpFolder = it
-                    Prefs.ytDlpFolder = it
-                }
-            },
-            onDownload = {
-                val task = onNewTask("Downloading yt-dlp...")
-
-                scope.launch {
-                    // Si está vacío, usa la carpeta 'bin' donde se ejecuta la app
-                    val targetFolder = ytDlpFolder.ifEmpty {
-                        File(System.getProperty("user.dir"), "bin").absolutePath
+            FolderRow( // Downloads Folder
+                label = "Downloads folder:",
+                value = downloadFolder,
+                onValueChange = { downloadFolder = it; Prefs.downloadFolder = it },
+                onLocate = {
+                    NativeFolderPicker.pickFolder(
+                        title = "Set downloads destination folder: ",
+                        initialDir = downloadFolder
+                    )?.let { // .let permite hacer algo con el valor nullable devuelto si no es nulo
+                        downloadFolder = it
+                        Prefs.downloadFolder = it
                     }
+                },
+                placeholder = "Select downloads destination folder..."
+            )
 
-                    if (ytDlpFolder.isEmpty()) {
-                        ytDlpFolder = targetFolder
-                        Prefs.ytDlpFolder = targetFolder
+            SettingText( // Cookies
+                label = "Cookies:",
+                value = browserCookies,
+                placeholder = "chrome, firefox...",
+                tooltipText = "Supported browsers:\nedge, chrome, brave, firefox, opera, vivaldi, safari.\n\nLeave empty to disable.",
+                onValueChange = { browserCookies = it; Prefs.browserForCookies = it }
+            )
+
+            var expandedLastActiveTab by remember { mutableStateOf(false) }
+            SimpleDropdown(
+                value = Prefs.lastActiveTab,
+                expanded = expandedLastActiveTab,
+                onExpandedChange = { expandedLastActiveTab = it },
+                options = listOf("VIDEO", "AUDIO", "SETUP"),
+                onSelect = { Prefs.lastActiveTab = it },
+                label = { it.uppercase() }
+            )
+        }
+
+        CollapsibleSection(title = "Dependencies") {
+
+            FolderRow( // YT-DLP
+                label = "YT-DLP:",
+                value = ytDlpFolder,
+                onValueChange = { ytDlpFolder = it; Prefs.ytDlpFolder = it },
+                onLocate = {
+                    NativeFolderPicker.pickFolder(
+                        title = "Set downloads destination folder: ",
+                        initialDir = ytDlpFolder
+                    )?.let {
+                        ytDlpFolder = it
+                        Prefs.ytDlpFolder = it
                     }
+                },
+                onDownload = {
+                    runDownloadTask(
+                        scope, onNewTask, "Downloading yt-dlp...", ytDlpFolder,
+                        { ytDlpFolder = it; Prefs.ytDlpFolder = it },
+                        { targetFolder, task ->
+                            if (Dependencies.ytDlpExists()) { // Ya existe, actualizar
+                                task.title = "Updating yt-dlp..."
+                                CommandManager.updateYtDlp(onProgress = { task.speed = it })
+                            } else {
+                                task.title = "Downloading yt-dlp..."
+                                val dest = "$targetFolder${File.separator}yt-dlp.exe"
+                                CommandManager.downloadFile(
+                                    url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
+                                    destPath = dest,
+                                    onProgress = { task.speed = it }
+                                )
+                            }
+                        })
+                },
+                placeholder = "Select yt-dlp destination folder..."
+            )
 
-                    File(targetFolder).mkdirs() // lo crea si no existe
 
-                    if (Dependencies.ytDlpExists()) { // Ya existe, actualizar
-                        task.title = "Updating yt-dlp..."
-                        CommandManager.updateYtDlp(onProgress = { task.speed = it })
-                    } else {
-                        task.title = "Downloading yt-dlp..."
-                        val dest = "$ytDlpFolder${File.separator}yt-dlp.exe"
-                        CommandManager.downloadFile(
-                            url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
-                            destPath = dest,
-                            onProgress = { task.speed = it }
-                        )
+            FolderRow( // ffmpeg
+                label = "ffmpeg:",
+                value = ffmpegFolder,
+                onValueChange = { ffmpegFolder = it; Prefs.ffmpegFolder = it },
+                onLocate = {
+                    NativeFolderPicker.pickFolder(
+                        title = "Set downloads destination folder: ",
+                        initialDir = ffmpegFolder
+                    )?.let {
+                        ffmpegFolder = it
+                        Prefs.ffmpegFolder = it
                     }
+                },
+                onDownload = {
+                    runDownloadTask(
+                        scope, onNewTask, "Downloading ffmpeg...", ffmpegFolder,
+                        { ffmpegFolder = it; Prefs.ffmpegFolder = it },
+                        { targetFolder, task ->
+                            CommandManager.downloadFfmpeg(
+                                destFolder = targetFolder,
+                                onProgress = { task.speed = it }
+                            )
+                        })
+                },
+                placeholder = "Select ffmpeg destination folder..."
+            )
 
-                    task.isDone = true
-                    task.progress = 1f
-                }
-            },
-            placeholder = "Select yt-dlp destination folder..."
-        )
 
-        // Fila 3 — ffmpeg folder
-        FolderRow(
-            label = "ffmpeg:",
-            value = ffmpegFolder,
-            onValueChange = { ffmpegFolder = it; Prefs.ffmpegFolder = it },
-            onClear = { ffmpegFolder = ""; Prefs.ffmpegFolder = "" },
-            onLocate = {
-                NativeFolderPicker.pickFolder(
-                    title = "Set downloads destination folder: ",
-                    initialDir = ffmpegFolder
-                )?.let {
-                    ffmpegFolder = it
-                    Prefs.ffmpegFolder = it
-                }
-            },
-            onDownload = {
-                val task = onNewTask("Downloading ffmpeg...")
-
-                scope.launch {
-                    val taskFolder = ffmpegFolder.ifEmpty {
-                        File(System.getProperty("user.dir"), "bin").absolutePath
+            FolderRow( // Deno
+                label = "deno:",
+                value = denoFolder,
+                onValueChange = { denoFolder = it; Prefs.denoFolder = it },
+                onLocate = {
+                    NativeFolderPicker.pickFolder(
+                        title = "Set downloads destination folder: ",
+                        initialDir = denoFolder
+                    )?.let {
+                        denoFolder = it
+                        Prefs.denoFolder = it
                     }
+                },
+                onDownload = {
+                    runDownloadTask(
+                        scope, onNewTask, "Downloading deno...", denoFolder,
+                        { denoFolder = it; Prefs.denoFolder = it },
+                        { targetFolder, task ->
+                            CommandManager.downloadDeno(
+                                destFolder = targetFolder,
+                                onProgress = { task.speed = it }
+                            )
+                        })
+                },
+                placeholder = "Select Deno destination folder..."
+            )
+        }
 
-                    if (ffmpegFolder.isEmpty()) {
-                        ffmpegFolder = taskFolder
-                        Prefs.ffmpegFolder = taskFolder
-                    }
+/*        Row(
+            modifier = Modifier.fillMaxWidth().height(Sizes.TextField),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            var language by remember { mutableStateOf("ENGLISH") }
+            var expanded by remember { mutableStateOf(false) }
 
-                    File(taskFolder).mkdirs()
+            Text(text = "Language:", color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.width(110.dp))
 
-                    CommandManager.downloadAndExtractFfmpeg(
-                        destFolder = ffmpegFolder,
-                        onProgress = { task.speed = it }
-                    )
-
-                    task.isDone = true
-                    task.progress = 1f
-                }
-            },
-            placeholder = "Select ffmpeg destination folder..."
-        )
+            SimpleDropdown(
+                value = language,
+                expanded = expanded,
+                onExpandedChange = { expanded = it },
+                options = listOf("ENGLISH", "SPANISH"),
+                onSelect = { language = it },
+                label = { it.uppercase() }
+            )
+        }*/
     }
 }
 
-@Composable
+// Extra Composables
+// ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+@Composable @OptIn(ExperimentalFoundationApi::class)
 fun FolderRow(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    onClear: () -> Unit,
     onLocate: () -> Unit,
     onDownload: (() -> Unit)? = null,  // null = no muestra el botón
     placeholder: String = "Select a folder..."
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(28.dp)
+        modifier = Modifier.fillMaxWidth().height(Sizes.TextField)
     ) {
         Text(text = label, color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.width(110.dp))
 
@@ -215,14 +268,79 @@ fun FolderRow(
             cursorBrush = SolidColor(AppTheme.TextPrimary),
             singleLine = true,
             modifier = Modifier
-                .width(600.dp)
+                .width(400.dp)
                 .height(26.dp)
-                .border(1.dp, AppTheme.Border2)
-                .background(AppTheme.Contrast),
+                .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
+                .background(AppTheme.Contrast, RoundedCornerShape(4.dp)),
+            decorationBox = { innerTextField ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.CenterStart,
+                        modifier = Modifier.fillMaxHeight().weight(1f)
+                    ) {
+                        if (value.isEmpty()) {
+                            Text(placeholder, color = AppTheme.TextSecondary, fontSize = 13.sp)
+                        }
+                        innerTextField()
+                    }
+
+                    ActionIcon(iconName = "folder", iconSize = 13.dp, shape = CircleShape, modifier = Modifier.aspectRatio(1f)) { onLocate() }
+                }
+            }
+        )
+
+        if (onDownload != null) {
+            Spacer(modifier = Modifier.width(2.dp))
+            TooltipArea(
+                tooltip = {
+                    Box(
+                        modifier = Modifier
+                            .background(AppTheme.Contrast, RoundedCornerShape(4.dp))
+                            .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
+                            .padding(8.dp)
+                    ) {
+                        Text("Download or update", color = AppTheme.TextPrimary, fontSize = 13.sp)
+                    }
+                },
+                tooltipPlacement = TooltipPlacement.CursorPoint(offset = DpOffset((8).dp, (-8).dp), alignment = Alignment.TopEnd),
+                delayMillis = 200
+            ) {
+                ActionIcon(iconName = "download", iconSize = 13.dp, shape = CircleShape, modifier = Modifier.aspectRatio(1f)) { onDownload() }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun SettingText(
+    id: String = "", label: String, value: String, placeholder: String = "", tooltipText: String = "",
+    onValueChange: (String) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().height(Sizes.TextField)
+    ) {
+        Text(text = label, color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.width(110.dp))
+
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
+            cursorBrush = SolidColor(AppTheme.TextPrimary),
+            singleLine = true,
+            modifier = Modifier
+                .width(130.dp)
+                .height(26.dp)
+                .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
+                .background(AppTheme.Contrast, RoundedCornerShape(4.dp)),
             decorationBox = { innerTextField ->
                 Box(
                     contentAlignment = Alignment.CenterStart,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
                 ) {
                     if (value.isEmpty()) {
                         Text(placeholder, color = AppTheme.TextSecondary, fontSize = 13.sp)
@@ -232,14 +350,78 @@ fun FolderRow(
             }
         )
 
-        Spacer(modifier = Modifier.width(2.dp))
-        BevelButton(icon = Icons.Default.Clear, text = "Clear", onClick = onClear)
-        Spacer(modifier = Modifier.width(2.dp))
-        BevelButton(icon = Icons.Default.FolderOpen, text = "Locate", onClick = onLocate)
+        if (tooltipText.isNotEmpty()) {
+            Spacer(modifier = Modifier.width(4.dp))
+            TooltipIcon(
+                iconName = "info", iconId = "tooltip-$id", iconSize = 16.dp, iconColor = AppTheme.Border2,
+                tooltipText = tooltipText,
+                tooltipModifier = Modifier.background(AppTheme.Contrast, RoundedCornerShape(4.dp))
+                    .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
+                    .padding(8.dp)
+            )
+        }
+    }
+}
 
-        if (onDownload != null) {
-            Spacer(modifier = Modifier.width(2.dp))
-            BevelButton(icon = Icons.Default.Download, text = "Download", onClick = onDownload)
+@Composable
+fun PropertyDropdown(
+    value: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+    label: (String) -> String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+
+    ) {
+/*        SimpleDropdown(
+            value = Prefs.lastActiveTab,
+            expanded = expandedLastActiveTab,
+            onExpandedChange = { expandedLastActiveTab = it },
+            options = listOf("VIDEO", "AUDIO", "SETUP"),
+            onSelect = { Prefs.lastActiveTab = it },
+            label = { it.uppercase() }
+        )*/
+    }
+}
+
+
+// Functions
+// ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+private val activeDownloads = mutableSetOf<String>()
+
+private fun runDownloadTask(
+    scope: CoroutineScope,
+    onNewTask: (String) -> SimpleTask,
+    taskTitle: String,
+    currentFolder: String,
+    onFolderUpdate: (String) -> Unit,
+    action: suspend (targetFolder: String, task: SimpleTask) -> Unit
+) {
+    if (activeDownloads.contains(taskTitle)) return
+    activeDownloads.add(taskTitle)
+
+    val task = onNewTask(taskTitle)
+
+    scope.launch {
+        try {
+            val targetFolder = currentFolder.ifEmpty {
+                File(System.getProperty("user.dir"), "bin").absolutePath
+            }
+
+            if (currentFolder.isEmpty())
+                onFolderUpdate(targetFolder)
+
+            File(targetFolder).mkdirs()
+
+            action(targetFolder, task)
+
+        } finally { // finally es un bloque que se ejecuta siempre aunque haya un error
+            task.isDone = true
+            task.progress = 1f
+            activeDownloads.remove(taskTitle)
         }
     }
 }

@@ -1,14 +1,11 @@
 package dev.mycet.ydg
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -16,20 +13,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.mycet.ydg.objects.Dependencies
-import dev.mycet.ydg.objects.DownloadItem
-import dev.mycet.ydg.objects.DownloadTask
-import dev.mycet.ydg.objects.Prefs
-import dev.mycet.ydg.objects.SimpleTask
-import dev.mycet.ydg.tabs.*
+import dev.mycet.ydg.objects.*
+import dev.mycet.ydg.tabs.AppTab
+import dev.mycet.ydg.tabs.MediaTab
+import dev.mycet.ydg.tabs.SetupTab
+import dev.mycet.ydg.tabs.TabBar
 import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.BevelContainer
+import dev.mycet.ydg.utils.ui.BevelContainer
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
@@ -63,7 +59,7 @@ fun App() {
                 .background(AppTheme.Background)              // El marco exterior
                 .padding(top = 4.dp, bottom = 4.dp, end = 12.dp)      // El "grosor" del marco
         ) {
-            // Barra de tabs arriba
+            // Barra de tabs
             TabBar(
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
@@ -79,14 +75,18 @@ fun App() {
                         .padding(2.dp)
                 ) {
                     when (selectedTab) {
-                        AppTab.VIDEO -> VideoTab(scope, onNewDownload = { title ->
+                        AppTab.VIDEO -> MediaTab(false, scope, onNewDownload = { title ->
                             val task = DownloadTask(title)
                             downloads.add(task)
                             task
                         })
 
-                        AppTab.AUDIO -> {}
-                        //AppTab.AUDIO -> AudioTab(scope, onProgress = {})
+                        AppTab.AUDIO -> MediaTab(isAudio = true, scope, onNewDownload = { title ->
+                            val task = DownloadTask(title)
+                            downloads.add(task)
+                            task
+                        })
+
                         AppTab.SETUP -> SetupTab(scope, onNewTask = { title ->
                             val task = SimpleTask(title)
                             downloads.add(task)
@@ -131,9 +131,6 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
         downloads.takeLast(4).forEach { task ->
             // key(task.id) es para que cada task tenga su propio id, para que no se repitan ni se asigne por el orden
             key(task.id) {
-                val interactionSource = remember { MutableInteractionSource() }
-                val isHovered by interactionSource.collectIsHoveredAsState()
-
                 LaunchedEffect(task.isDone, task.hasError) {
                     if (task.isDone || task.hasError) {
                         delay(7.seconds)
@@ -152,7 +149,16 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                     enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn() + expandVertically(),
                     exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(animationSpec = tween(400))
                 ) {
-                    BevelContainer(modifier = Modifier.fillMaxWidth().height(60.dp)) {
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isHovered by interactionSource.collectIsHoveredAsState()
+                    val alpha by animateFloatAsState(targetValue = if (isHovered) 1f else if (task.isDone) 0.5f else 0.75f)
+
+                    BevelContainer(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .hoverable(interactionSource = interactionSource) // lo hace hoverable
+                        .alpha(alpha) // le aplica la transparencia dependiente de si se le pone el mouse encima o no
+                    ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()

@@ -1,12 +1,7 @@
 package dev.mycet.ydg
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
@@ -17,7 +12,7 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.TopIcon
+import dev.mycet.ydg.utils.ui.ActionIcon
 
 // Yt-Dlp Gui
 fun main() {
@@ -29,7 +24,7 @@ fun main() {
 
         Window(
             onCloseRequest = ::exitApplication,
-            title = "YDG v0.1",
+            title = "YDG v0.1.0",
             state = windowState,
             undecorated = true
         ) {
@@ -43,24 +38,23 @@ fun main() {
                             .background(AppTheme.Background),
                         verticalAlignment = CenterVertically
                     ) {
-                        TopIcon(
-                            iconPath = "icons/top_expand.svg",
+                        ActionIcon(
+                            iconName = "top_expand",
                             description = "TopExpand",
-                        ) {
-                        }
+                        ) { }
 
                         Spacer(modifier = Modifier.weight(1f))
 
                         // Botón Minimizar
-                        TopIcon(
-                            iconPath = "icons/top_minimize.svg",
+                        ActionIcon(
+                            iconName = "top_minimize",
                             description = "Minimize",
                         ) {
                             windowState.isMinimized = true
                         }
                         // Botón Pantalla Completa
-                        TopIcon(
-                            iconPath = if (windowState.placement == WindowPlacement.Floating) "icons/top_maximize.svg" else "icons/top_restore.svg",
+                        ActionIcon(
+                            iconName = if (windowState.placement == WindowPlacement.Floating) "top_maximize" else "top_restore",
                             description = if (windowState.placement == WindowPlacement.Floating) "Maximize" else "Restore",
                         ) {
                             windowState.placement = if (windowState.placement == WindowPlacement.Floating) {
@@ -70,9 +64,9 @@ fun main() {
                             }
                         }
                         // Botón Cerrar
-                        TopIcon(
+                        ActionIcon(
                             hoveredColor = Color.Red,
-                            iconPath = "icons/top_close.svg",
+                            iconName = "top_close",
                             description = "Close",
                         ) {
                             exitApplication()
