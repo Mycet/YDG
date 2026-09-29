@@ -1,4 +1,4 @@
-package dev.mycet.ydg.utils.ui
+package dev.mycet.ydg.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -8,18 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,8 +20,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.Sizes
+import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.ui.theme.Sizes
 
 @Composable
 fun BevelButton(
@@ -133,7 +123,7 @@ fun <T> SimpleDropdown(
     onSelect: (T) -> Unit,
     label: (T) -> String,
     modifier: Modifier = Modifier.width(200.dp),
-    height: Dp = Sizes.TextField
+    height: Dp = Sizes.TextFieldHeight
 ) {
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -169,10 +159,10 @@ fun <T> SimpleDropdown(
                         Text(
                             label(option),
                             color = AppTheme.TextPrimary,
-                            fontSize = Sizes.Font
+                            fontSize = Sizes.TextFieldFont
                         )
                     },
-                    modifier = Modifier.height(Sizes.TextField),
+                    modifier = Modifier.height(Sizes.TextFieldHeight),
                     onClick = { onSelect(option) }
                 )
             }

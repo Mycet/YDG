@@ -1,4 +1,4 @@
-package dev.mycet.ydg.objects
+package dev.mycet.ydg.data.models
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

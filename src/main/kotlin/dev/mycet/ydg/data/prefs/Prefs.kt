@@ -1,4 +1,4 @@
-package dev.mycet.ydg.objects
+package dev.mycet.ydg.data.prefs
 
 import java.io.File
 import java.io.FileInputStream

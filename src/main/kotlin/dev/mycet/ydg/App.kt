@@ -19,13 +19,17 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.mycet.ydg.objects.*
-import dev.mycet.ydg.tabs.AppTab
-import dev.mycet.ydg.tabs.MediaTab
-import dev.mycet.ydg.tabs.SetupTab
-import dev.mycet.ydg.tabs.TabBar
-import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.ui.BevelContainer
+import dev.mycet.ydg.core.Dependencies
+import dev.mycet.ydg.data.models.DownloadItem
+import dev.mycet.ydg.data.models.DownloadTask
+import dev.mycet.ydg.data.models.SimpleTask
+import dev.mycet.ydg.data.prefs.Prefs
+import dev.mycet.ydg.ui.navigation.AppTab
+import dev.mycet.ydg.ui.navigation.screens.MediaTab
+import dev.mycet.ydg.ui.navigation.screens.SetupTab
+import dev.mycet.ydg.ui.navigation.TabBar
+import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.ui.components.BevelContainer
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 

@@ -1,4 +1,4 @@
-package dev.mycet.ydg.tabs
+package dev.mycet.ydg.ui.navigation.screens
 
 import androidx.compose.foundation.HorizontalScrollbar
 import androidx.compose.foundation.Image
@@ -23,13 +23,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.mycet.ydg.objects.*
-import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.Sizes
-import dev.mycet.ydg.utils.ui.BevelButton
-import dev.mycet.ydg.utils.ui.BevelContainer
-import dev.mycet.ydg.utils.ui.SimpleDropdown
-import dev.mycet.ydg.ytdownload.CommandManager
+import dev.mycet.ydg.data.models.*
+import dev.mycet.ydg.downloader.CommandManager
+import dev.mycet.ydg.ui.components.BevelButton
+import dev.mycet.ydg.ui.components.BevelContainer
+import dev.mycet.ydg.ui.components.SimpleDropdown
+import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.ui.theme.Sizes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -117,7 +117,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
             BevelContainer(
                 modifier = Modifier
                     .weight(1f)  // ocupa todo el espacio restante de la fila
-                    .height(Sizes.TextField),
+                    .height(Sizes.TextFieldHeight),
             ) {
                 // BasicTextField permite mayor control que TextField
                 BasicTextField(
@@ -126,7 +126,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                     onValueChange = {
                         url = it
                     }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
-                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.Font),
+                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.TextFieldFont),
                     cursorBrush = SolidColor(AppTheme.TextPrimary),
                     singleLine = true,
                     decorationBox = { innerTextField ->
@@ -141,7 +141,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                                 Text(
                                     "Insert link here",
                                     color = AppTheme.TextSecondary,
-                                    fontSize = Sizes.Font
+                                    fontSize = Sizes.TextFieldFont
                                 )
                             }
                             innerTextField()  // el campo de texto real va acá adentro
@@ -163,7 +163,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                     Text(
                         text = "Loading...",
                         color = AppTheme.TextSecondary,
-                        fontSize = Sizes.Font,
+                        fontSize = Sizes.TextFieldFont,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -172,7 +172,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                     Text(
                         text = "No results",
                         color = AppTheme.TextSecondary,
-                        fontSize = Sizes.Font,
+                        fontSize = Sizes.TextFieldFont,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -287,7 +287,7 @@ private fun MediaDetailsPanel(
                     Text(
                         text = "Loading...",
                         color = AppTheme.TextSecondary,
-                        fontSize = Sizes.Font,
+                        fontSize = Sizes.TextFieldFont,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -321,14 +321,14 @@ private fun MediaDetailsPanel(
                 BevelContainer(
                     modifier = Modifier
                         .width(400.dp)
-                        .height(Sizes.TextField)
+                        .height(Sizes.TextFieldHeight)
                 ) {
                     BasicTextField(
                         value = editedTitle,
                         onValueChange = onTitleChange,
                         textStyle = TextStyle(
                             color = AppTheme.TextPrimary,
-                            fontSize = Sizes.Font
+                            fontSize = Sizes.TextFieldFont
                         ),
                         cursorBrush = SolidColor(AppTheme.TextPrimary),
                         singleLine = true,
@@ -361,7 +361,7 @@ private fun MediaDetailsPanel(
                 if (isAudio) details.audioFormatsForExt(selectedExt) else details.videoFormatsForExt(selectedExt)
             val formatLabel: (VideoFormat) -> String = { format ->
                 if (isAudio) "${format.audioBitrate?.toInt() ?: 0} kbps    ${format.displaySize}"
-                else "${format.quality}    ${format.displaySize}"
+                else "${format.displayQuality}    ${format.displaySize}"
             }
             PropRow(label = "Quality") {
                 SimpleDropdown(

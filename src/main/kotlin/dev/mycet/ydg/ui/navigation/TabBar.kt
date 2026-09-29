@@ -1,4 +1,4 @@
-package dev.mycet.ydg.tabs
+package dev.mycet.ydg.ui.navigation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,8 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
-import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.ui.NavigationIcon
+import dev.mycet.ydg.ui.components.NavigationIcon
+import dev.mycet.ydg.ui.theme.AppTheme
 
 // Unit = void
 

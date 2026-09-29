@@ -1,8 +1,8 @@
-package dev.mycet.ydg.ytdownload
+package dev.mycet.ydg.downloader
 
-import dev.mycet.ydg.objects.Prefs
-import dev.mycet.ydg.objects.VideoDetails
-import dev.mycet.ydg.objects.VideoInfo
+import dev.mycet.ydg.data.models.VideoDetails
+import dev.mycet.ydg.data.models.VideoInfo
+import dev.mycet.ydg.data.prefs.Prefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
@@ -65,7 +65,8 @@ object CommandManager {
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar tras crear
-            val outputTitle = title.ifEmpty { "%(title)s" }
+            val safeTitle = title.replace("\"", "'").replace(Regex("[\\\\/:*?<>|]"), "_")
+            val outputTitle = safeTitle.ifEmpty { "%(title)s" }
             addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
             addAll(listOf("--format", "$formatId+bestaudio/best"))
             addAll(listOf("--merge-output-format", extension.lowercase().trim()))
@@ -85,7 +86,8 @@ object CommandManager {
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
-            val outputTitle = title.ifEmpty { "%(title)s" }
+            val safeTitle = title.replace("\"", "'").replace(Regex("[\\\\/:*?<>|]"), "_")
+            val outputTitle = safeTitle.ifEmpty { "%(title)s" }
             addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
             addAll(listOf("--format", formatId))
             addAll(listOf("--extract-audio", "--audio-format", format.lowercase()))

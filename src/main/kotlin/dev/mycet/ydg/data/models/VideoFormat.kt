@@ -1,4 +1,4 @@
-package dev.mycet.ydg.objects
+package dev.mycet.ydg.data.models
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -12,16 +12,25 @@ data class VideoFormat(
     @SerialName("abr") val audioBitrate: Double? = null,
     @SerialName("ext") val extension: String = "",
     val height: Int? = null,
-    @SerialName("vcodec") val videoCodec: String? = "none",
-    @SerialName("acodec") val audioCodec: String? = "none",
+    @SerialName("vcodec") val videoCodec: String? = null,
+    @SerialName("acodec") val audioCodec: String? = null,
     val filesize: Long? = null,
     @SerialName("filesize_approx") val filesizeApprox: Long? = null,
 ) {
     // Tamaño real aproximado en bytes
     val effectiveSize: Long? get() = filesize ?: filesizeApprox
 
-    val isAudioFormat: Boolean get() = audioCodec != null && audioCodec != "none" && (videoCodec == null || videoCodec == "none")
-    val isVideoFormat: Boolean get() = height != null && videoCodec != null && videoCodec != "none" && quality != null
+    val isVideoFormat: Boolean get() = height != null && videoCodec != "none"
+    val isAudioFormat: Boolean get() = audioCodec != "none" && (videoCodec == "none" || height == null)
+
+    // Para saber si el video ya trae el audio
+    val isPreMerged: Boolean get() = isVideoFormat && audioCodec != null && audioCodec != "none"
+
+    val displayQuality: String get() {
+        if (!quality.isNullOrBlank()) return quality
+        if (height != null) return "${height}p"
+        return "Unknown"
+    }
 
     val displaySize: String get() {
         val bytes = effectiveSize ?: 0

@@ -1,4 +1,4 @@
-package dev.mycet.ydg.tabs
+package dev.mycet.ydg.ui.navigation
 
 enum class AppTab(val iconPath: String) {
     VIDEO("icons/tab_play.svg"),

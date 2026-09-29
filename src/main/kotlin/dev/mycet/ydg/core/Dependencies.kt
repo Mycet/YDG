@@ -1,5 +1,6 @@
-package dev.mycet.ydg.objects
+package dev.mycet.ydg.core
 
+import dev.mycet.ydg.data.prefs.Prefs
 import java.io.File
 
 object Dependencies {
@@ -7,6 +8,8 @@ object Dependencies {
         File("${Prefs.ytDlpFolder}${File.separator}yt-dlp.exe").exists()
     fun ffmpegExists(): Boolean =
         File("${Prefs.ffmpegFolder}${File.separator}ffmpeg.exe").exists()
+    fun denoExists(): Boolean =
+        File("${Prefs.ffmpegFolder}${File.separator}deno.exe").exists()
 
     // Chequea una lista de problemas que impidan el funcionamiento del programa
     fun check(): List<String> {
@@ -15,6 +18,8 @@ object Dependencies {
         else if (!ytDlpExists()) issues.add("yt-dlp.exe not found in configured folder")
         if (Prefs.ffmpegFolder.isEmpty()) issues.add("ffmpeg folder not configured")
         else if (!ffmpegExists()) issues.add("ffmpeg.exe not found in configured folder")
+        if (Prefs.denoFolder.isEmpty()) issues.add("deno folder not configured")
+        else if (!denoExists()) issues.add("deno.exe not found in configured folder")
         return issues
     }
 }

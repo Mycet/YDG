@@ -11,8 +11,8 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.ui.ActionIcon
+import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.ui.components.ActionIcon
 
 // Yt-Dlp Gui
 fun main() {

@@ -1,39 +1,34 @@
-package dev.mycet.ydg.tabs
+package dev.mycet.ydg.ui.navigation.screens
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.TooltipPlacement
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.mycet.ydg.objects.Dependencies
-import dev.mycet.ydg.objects.Prefs
-import dev.mycet.ydg.objects.SimpleTask
-import dev.mycet.ydg.utils.AppTheme
-import dev.mycet.ydg.utils.Sizes
-import dev.mycet.ydg.utils.ui.BevelButton
-import dev.mycet.ydg.utils.ui.ActionIcon
-import dev.mycet.ydg.utils.ui.CollapsibleSection
-import dev.mycet.ydg.utils.ui.SimpleDropdown
-import dev.mycet.ydg.utils.ui.TooltipIcon
-import dev.mycet.ydg.ytdownload.CommandManager
+import dev.mycet.ydg.core.Dependencies
+import dev.mycet.ydg.data.models.SimpleTask
+import dev.mycet.ydg.data.prefs.Prefs
+import dev.mycet.ydg.downloader.CommandManager
+import dev.mycet.ydg.ui.components.ActionIcon
+import dev.mycet.ydg.ui.components.CollapsibleSection
+import dev.mycet.ydg.ui.components.Modifiers.inputFieldSize
+import dev.mycet.ydg.ui.components.Modifiers.inputFieldStyle
+import dev.mycet.ydg.ui.components.TooltipIcon
+import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.ui.theme.Sizes
 import javafx.application.Platform
 import javafx.stage.DirectoryChooser
 import kotlinx.coroutines.CoroutineScope
@@ -119,13 +114,14 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
             )
 
             var expandedLastActiveTab by remember { mutableStateOf(false) }
-            SimpleDropdown(
+            SettingsDropdown(
+                label = "Last active tab:",
                 value = Prefs.lastActiveTab,
                 expanded = expandedLastActiveTab,
                 onExpandedChange = { expandedLastActiveTab = it },
                 options = listOf("VIDEO", "AUDIO", "SETUP"),
                 onSelect = { Prefs.lastActiveTab = it },
-                label = { it.uppercase() }
+                dropdownLabel = { it.uppercase() }
             )
         }
 
@@ -257,7 +253,7 @@ fun FolderRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Sizes.TextField)
+        modifier = Modifier.fillMaxWidth().height(Sizes.TextFieldHeight)
     ) {
         Text(text = label, color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.width(110.dp))
 
@@ -267,11 +263,7 @@ fun FolderRow(
             textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
             cursorBrush = SolidColor(AppTheme.TextPrimary),
             singleLine = true,
-            modifier = Modifier
-                .width(400.dp)
-                .height(26.dp)
-                .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
-                .background(AppTheme.Contrast, RoundedCornerShape(4.dp)),
+            modifier = Modifier.inputFieldSize(width = 400.dp).inputFieldStyle(),
             decorationBox = { innerTextField ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -297,10 +289,7 @@ fun FolderRow(
             TooltipArea(
                 tooltip = {
                     Box(
-                        modifier = Modifier
-                            .background(AppTheme.Contrast, RoundedCornerShape(4.dp))
-                            .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
-                            .padding(8.dp)
+                        modifier = Modifier.inputFieldStyle().padding(8.dp)
                     ) {
                         Text("Download or update", color = AppTheme.TextPrimary, fontSize = 13.sp)
                     }
@@ -322,7 +311,7 @@ fun SettingText(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Sizes.TextField)
+        modifier = Modifier.fillMaxWidth().height(Sizes.TextFieldHeight)
     ) {
         Text(text = label, color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.width(110.dp))
 
@@ -332,11 +321,7 @@ fun SettingText(
             textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = 13.sp),
             cursorBrush = SolidColor(AppTheme.TextPrimary),
             singleLine = true,
-            modifier = Modifier
-                .width(130.dp)
-                .height(26.dp)
-                .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
-                .background(AppTheme.Contrast, RoundedCornerShape(4.dp)),
+            modifier = Modifier.inputFieldSize().inputFieldStyle(),
             decorationBox = { innerTextField ->
                 Box(
                     contentAlignment = Alignment.CenterStart,
@@ -355,35 +340,82 @@ fun SettingText(
             TooltipIcon(
                 iconName = "info", iconId = "tooltip-$id", iconSize = 16.dp, iconColor = AppTheme.Border2,
                 tooltipText = tooltipText,
-                tooltipModifier = Modifier.background(AppTheme.Contrast, RoundedCornerShape(4.dp))
-                    .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
-                    .padding(8.dp)
+                tooltipModifier = Modifier.inputFieldStyle().padding(8.dp)
             )
         }
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PropertyDropdown(
+fun <T> SettingsDropdown(
+    label: String,
     value: String,
+    modifier: Modifier = Modifier.height(Sizes.TextFieldHeight),
+    options: List<T>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    options: List<String>,
-    onSelect: (String) -> Unit,
-    label: (String) -> String,
-    modifier: Modifier = Modifier
+    dropdownLabel: (T) -> String,
+    onSelect: (T) -> Unit,
 ) {
     Row(
-
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().height(Sizes.TextFieldHeight)
     ) {
-/*        SimpleDropdown(
-            value = Prefs.lastActiveTab,
-            expanded = expandedLastActiveTab,
-            onExpandedChange = { expandedLastActiveTab = it },
-            options = listOf("VIDEO", "AUDIO", "SETUP"),
-            onSelect = { Prefs.lastActiveTab = it },
-            label = { it.uppercase() }
-        )*/
+        Text(text = label, color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.width(110.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = onExpandedChange,
+            modifier = modifier
+        ) {
+            Box(
+                modifier = Modifier.inputFieldSize().inputFieldStyle()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
+                ) {
+                    Text(text = value, color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+
+                    val rotation by animateFloatAsState(
+                        targetValue = if (expanded) 180f else 0f
+                    )
+
+                    Icon(
+                        painter = painterResource("icons/arrow-down.svg"),
+                        contentDescription = null,
+                        tint = AppTheme.Border2,
+                        modifier = Modifier.rotate(rotation)
+                    )
+                }
+            }
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { onExpandedChange(false) },
+                containerColor = AppTheme.Contrast
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                dropdownLabel(option),
+                                color = AppTheme.TextPrimary,
+                                fontSize = Sizes.TextFieldFont
+                            )
+                        },
+                        modifier = Modifier.height(Sizes.TextFieldHeight),
+                        onClick = {
+                            onSelect(option)
+                            onExpandedChange(false)
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 

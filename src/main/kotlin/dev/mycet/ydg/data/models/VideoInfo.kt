@@ -1,4 +1,4 @@
-package dev.mycet.ydg.objects
+package dev.mycet.ydg.data.models
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
