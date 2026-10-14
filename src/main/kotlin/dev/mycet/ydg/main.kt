@@ -11,8 +11,9 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.components.ActionIcon
+import dev.mycet.ydg.ui.theme.AppTheme
+import java.awt.Dimension
 
 // Yt-Dlp Gui
 fun main() {
@@ -28,6 +29,8 @@ fun main() {
             state = windowState,
             undecorated = true
         ) {
+            window.minimumSize = Dimension(1280, 720)
+
             Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
 
                 WindowDraggableArea {

@@ -62,7 +62,7 @@ object Prefs {
             properties.setProperty("startupTab", value)
             save()
         }
-    var lastActiveTab: String
+    var openOnStartup: String
         get() = properties.getProperty("lastActiveTab", "VIDEO")
         set(value) {
             properties.setProperty("lastActiveTab", value)
@@ -75,4 +75,28 @@ object Prefs {
             properties.setProperty("browserForCookies", value)
             save()
         }
+
+    var rememberMediaSettings: Boolean
+        get() = properties.getProperty("rememberMediaSettings", "false").toBoolean()
+        set(value) { properties.setProperty("rememberMediaSettings", value.toString()); save() }
+
+    var embedThumbnail: Boolean
+        get() = properties.getProperty("embedThumbnail", "true").toBoolean()
+        set(value) { properties.setProperty("embedThumbnail", value.toString()); save() }
+
+    var addMetadata: Boolean
+        get() = properties.getProperty("addMetadata", "true").toBoolean()
+        set(value) { properties.setProperty("addMetadata", value.toString()); save() }
+
+    var embedSubs: Boolean
+        get() = properties.getProperty("embedSubs", "false").toBoolean()
+        set(value) { properties.setProperty("embedSubs", value.toString()); save() }
+
+    var sponsorBlock: Boolean
+        get() = properties.getProperty("sponsorBlock", "false").toBoolean()
+        set(value) { properties.setProperty("sponsorBlock", value.toString()); save() }
+
+    var customArgs: String
+        get() = properties.getProperty("customArgs", "")
+        set(value) { properties.setProperty("customArgs", value); save() }
 }

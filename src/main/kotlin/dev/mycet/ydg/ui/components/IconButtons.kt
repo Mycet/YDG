@@ -1,5 +1,7 @@
 package dev.mycet.ydg.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -25,7 +27,7 @@ import dev.mycet.ydg.ui.theme.AppTheme
 // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 @Composable
 fun ActionIcon(
-    hoveredColor: Color = AppTheme.SecondaryBackground,
+    hoveredColor: Color = AppTheme.Surface,
     backgroundColor: Color = Color.Transparent,
     iconName: String,
     description: String = "TopIcon",
@@ -56,7 +58,7 @@ fun ActionIcon(
         Icon(
             painter = painterResource(path),
             contentDescription = description,
-            tint = if (isHovered) AppTheme.TextPrimary else AppTheme.TextSecondary,
+            tint = if (isHovered) AppTheme.Font1 else AppTheme.Font2,
             modifier = Modifier.size(iconSize)
         )
     }
@@ -71,7 +73,7 @@ fun NavigationIcon(
     modifier: Modifier = Modifier,
     backgroundSelected: Color = AppTheme.Accent.copy(alpha = 0.15f),
     background: Color = AppTheme.Background,
-    colorIfHovered: Color = AppTheme.Accent.copy(alpha = 0.15f),
+    colorIfHovered: Color = AppTheme.SurfaceHigh.copy(alpha = 0.15f),
     color: Color = Color.Transparent,
     iconSize: Dp = 20.dp,
     onClick: () -> Unit
@@ -93,14 +95,17 @@ fun NavigationIcon(
                 onClick = onClick
             )
     ) {
-        val iconBackground = if (isHovered && !isSelected) colorIfHovered else color
+        val iconBg by animateColorAsState(
+            if (isHovered && !isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent,
+            animationSpec = tween(120)
+        )
 
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    color = iconBackground,
+                    color = iconBg,
                     shape = CircleShape
                 )
         ) {
@@ -111,7 +116,7 @@ fun NavigationIcon(
                 painter = painterResource(path),
                 modifier = Modifier.size(iconSize),
                 contentDescription = "",
-                tint = if (isSelected) AppTheme.TextPrimary else AppTheme.TextSecondary,
+                tint = if (isSelected) AppTheme.Font1 else AppTheme.Font2,
             )
         }
     }
@@ -123,13 +128,13 @@ fun NavigationIcon(
 fun TooltipIcon(
     iconName: String,
     iconId: String = "TooltipIcon",
-    iconColor: Color = AppTheme.TextSecondary,
+    iconColor: Color = AppTheme.Font2,
     iconSize: Dp = 13.dp,
     tooltipText: String = "",
-    tooltipTextColor: Color = AppTheme.TextPrimary,
+    tooltipTextColor: Color = AppTheme.Font1,
     tooltipTextSize: TextUnit = 12.sp,
-    tooltipModifier: Modifier = Modifier.background(AppTheme.Contrast)
-        .border(1.dp, AppTheme.Border2)
+    tooltipModifier: Modifier = Modifier.background(AppTheme.Sunken)
+        .border(1.dp, AppTheme.Border)
         .padding(8.dp)
 ) {
     var path = if (iconName.startsWith("icons/")) iconName else "icons/$iconName"

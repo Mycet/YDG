@@ -1,31 +1,37 @@
 package dev.mycet.ydg.ui.navigation.screens
 
-import androidx.compose.foundation.HorizontalScrollbar
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.*
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.data.models.*
 import dev.mycet.ydg.downloader.CommandManager
 import dev.mycet.ydg.ui.components.BevelButton
+import dev.mycet.ydg.ui.components.BevelButtonDefaults
 import dev.mycet.ydg.ui.components.BevelContainer
 import dev.mycet.ydg.ui.components.SimpleDropdown
 import dev.mycet.ydg.ui.theme.AppTheme
@@ -40,6 +46,8 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (String) -> DownloadTask) {
+    val focusManager = LocalFocusManager.current
+
     var url by remember { mutableStateOf("") }
     var previewItems by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
     var isLoadingList by remember { mutableStateOf(false) }
@@ -104,6 +112,12 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
     Column(
         modifier = Modifier
             .fillMaxSize() // que ocupe todo el espacio
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                focusManager.clearFocus()
+            }
             .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 6.dp), // separación desde los bordes
         verticalArrangement = Arrangement.spacedBy(4.dp) // espaciado vertical entre elementos
     ) {
@@ -114,20 +128,23 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                 .height(28.dp) // ancho fijo para todos los elementos de la fila
                 .padding(horizontal = 20.dp)
         ) {
+            var isFocused by remember { mutableStateOf(false) }
+
             BevelContainer(
+                border = if (isFocused) AppTheme.Accent else AppTheme.Border,
                 modifier = Modifier
                     .weight(1f)  // ocupa todo el espacio restante de la fila
                     .height(Sizes.TextFieldHeight),
             ) {
                 // BasicTextField permite mayor control que TextField
                 BasicTextField(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused},
                     value = url,
                     onValueChange = {
                         url = it
                     }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
-                    textStyle = TextStyle(color = AppTheme.TextPrimary, fontSize = Sizes.TextFieldFont),
-                    cursorBrush = SolidColor(AppTheme.TextPrimary),
+                    textStyle = TextStyle(color = AppTheme.Font1, fontSize = Sizes.TextFieldFont),
+                    cursorBrush = SolidColor(AppTheme.Font1),
                     singleLine = true,
                     decorationBox = { innerTextField ->
                         Box(
@@ -140,7 +157,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                                 // Texto que muestra cuando el campo está vacío
                                 Text(
                                     "Insert link here",
-                                    color = AppTheme.TextSecondary,
+                                    color = AppTheme.Font2,
                                     fontSize = Sizes.TextFieldFont
                                 )
                             }
@@ -156,13 +173,19 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
             modifier = Modifier
                 .fillMaxSize()
                 .background(AppTheme.Background)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    focusManager.clearFocus()
+                }
                 .padding(2.dp)
         ) {
             when {
                 isLoadingList -> {
                     Text(
                         text = "Loading...",
-                        color = AppTheme.TextSecondary,
+                        color = AppTheme.Font2,
                         fontSize = Sizes.TextFieldFont,
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -171,7 +194,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                 previewItems.isEmpty() && details == null && url.startsWith("http") -> {
                     Text(
                         text = "No results",
-                        color = AppTheme.TextSecondary,
+                        color = AppTheme.Font2,
                         fontSize = Sizes.TextFieldFont,
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -223,6 +246,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                         if (previewItems.size > 1)
                             MediaPlaylist(
                                 previewItems = previewItems,
+                                selectedVideoId = details?.id ?: detailsLoadedForId,
                                 url = url,
                                 scope = scope
                             ) { video ->
@@ -267,29 +291,49 @@ private fun MediaDetailsPanel(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             val thumbnail = rememberThumbnail(details.thumbnail ?: "")
+
             Box(
-                modifier = Modifier
-                    .size(240.dp)
-                    .fillMaxHeight()
-                    .background(AppTheme.Background)
-                    .clip(RoundedCornerShape(12.dp))
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.padding(0.dp)
             ) {
                 if (thumbnail != null) {
                     Image(
                         bitmap = thumbnail,
-                        contentDescription = "",
+                        contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .size(240.dp)
+                            .blur(
+                                radius = 32.dp,
+                                edgeTreatment = BlurredEdgeTreatment.Unbounded
+                            )
+                            .alpha(0.5f)
+                            .clip(AppTheme.Round12),
                     )
                 }
 
-                if (isLoadingDetails) {
-                    Text(
-                        text = "Loading...",
-                        color = AppTheme.TextSecondary,
-                        fontSize = Sizes.TextFieldFont,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                Box(
+                    modifier = Modifier
+                        .size(240.dp)
+                        .clip(AppTheme.Round12)
+                ) {
+                    if (thumbnail != null) {
+                        Image(
+                            bitmap = thumbnail,
+                            contentDescription = "",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
+                    if (isLoadingDetails) {
+                        Text(
+                            text = "Loading...",
+                            color = AppTheme.Font2,
+                            fontSize = Sizes.TextFieldFont,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
             }
 
@@ -298,27 +342,35 @@ private fun MediaDetailsPanel(
             val secs = duration % 60
             Text(
                 "${details.uploader}  ·  %d:%02d".format(mins, secs),
-                color = AppTheme.TextSecondary,
+                color = AppTheme.Font2,
                 fontSize = 11.sp
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             if (!isLoadingDetails)
                 BevelButton(
                     text = "Download",
-                    modifier = Modifier.padding(top = 10.dp),
+//                    icon = "download-2",
+                    colors = BevelButtonDefaults.colors(
+                        fillHover = AppTheme.SurfaceHigh.copy(alpha = 0.35f)
+                    ),
+                    font = BevelButtonDefaults.font(fontWeight = FontWeight.Medium),
                     onClick = onDownload
                 )
         }
 
         // Propiedades
-
         Column(
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // Título editable
             PropRow(label = "Title") {
+                var isFocused by remember { mutableStateOf(false) }
+
                 BevelContainer(
+                    border = if (isFocused) AppTheme.Accent else AppTheme.Border,
                     modifier = Modifier
                         .width(400.dp)
                         .height(Sizes.TextFieldHeight)
@@ -327,12 +379,11 @@ private fun MediaDetailsPanel(
                         value = editedTitle,
                         onValueChange = onTitleChange,
                         textStyle = TextStyle(
-                            color = AppTheme.TextPrimary,
-                            fontSize = Sizes.TextFieldFont
+                            color = AppTheme.Font1,
                         ),
-                        cursorBrush = SolidColor(AppTheme.TextPrimary),
+                        cursorBrush = SolidColor(AppTheme.Font1),
                         singleLine = true,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused},
                         decorationBox = { innerTextField ->
                             Box(
                                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
@@ -359,13 +410,19 @@ private fun MediaDetailsPanel(
             // Dropdown quality-format
             val qualityOptions =
                 if (isAudio) details.audioFormatsForExt(selectedExt) else details.videoFormatsForExt(selectedExt)
-            val formatLabel: (VideoFormat) -> String = { format ->
-                if (isAudio) "${format.audioBitrate?.toInt() ?: 0} kbps    ${format.displaySize}"
-                else "${format.displayQuality}    ${format.displaySize}"
+            val formatLabel: (VideoFormat) -> AnnotatedString = { format ->
+                buildAnnotatedString {
+                    val quality = if (isAudio) "${format.audioBitrate?.toInt() ?: 0} kbps" else format.displayQuality
+                    append(quality)
+                    append("    ")
+                    withStyle(SpanStyle(color = AppTheme.Font2)) {
+                        append(format.displaySize)
+                    }
+                }
             }
             PropRow(label = "Quality") {
                 SimpleDropdown(
-                    value = selectedQuality?.let { formatLabel(it) } ?: "",
+                    value = selectedQuality?.let { formatLabel(it) } ?: AnnotatedString(""),
                     expanded = expandedQuality,
                     onExpandedChange = onExpandedQualityChange,
                     options = qualityOptions,
@@ -380,6 +437,7 @@ private fun MediaDetailsPanel(
 @Composable // Playlist
 private fun MediaPlaylist(
     previewItems: List<VideoInfo>,
+    selectedVideoId: String?,
     url: String,
     scope: CoroutineScope,
     onVideoClick: (VideoInfo) -> Unit
@@ -415,24 +473,59 @@ private fun MediaPlaylist(
             .height(150.dp)
             .padding(horizontal = 4.dp, vertical = 2.dp)
     ) {
-        LazyRow(
-            state = scrollState,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.weight(1f).fillMaxWidth()
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val delta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
-                            if (delta != 0f) scope.launch {
-                                scrollState.scrollBy(delta * 80f)
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyRow(
+                state = scrollState,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val delta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                if (delta != 0f) scope.launch {
+                                    scrollState.scrollBy(delta * 80f)
+                                }
                             }
                         }
                     }
+            ) {
+                items(currentItems) { video ->
+                    VideoCard(
+                        video,
+                        isSelected = video.id == selectedVideoId,
+                        onClick = { onVideoClick(video) }
+                    )
                 }
-        ) {
-            items(currentItems) { video ->
-                VideoCard(video, onClick = { onVideoClick(video) })
+            }
+
+            if (scrollState.canScrollBackward) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(64.dp)
+                        .align(Alignment.CenterStart)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(AppTheme.Background, Color.Transparent)
+                            )
+                        )
+                )
+            }
+
+            if (scrollState.canScrollForward) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(64.dp)
+                        .align(Alignment.CenterEnd)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, AppTheme.Background)
+                            )
+                        )
+                )
             }
         }
 
@@ -456,7 +549,7 @@ private fun PropRow(label: String, content: @Composable RowScope.() -> Unit) {
     ) {
         Text(
             text = label,
-            color = AppTheme.TextSecondary,
+            color = AppTheme.Font2,
             fontSize = 12.sp,
             modifier = Modifier.width(55.dp)
         )

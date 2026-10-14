@@ -1,9 +1,11 @@
 package dev.mycet.ydg.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
@@ -13,8 +15,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -23,59 +26,137 @@ import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
 
+data class BevelButtonColors(
+    val border: Color,
+    val borderHover: Color,
+    val fill: Color,
+    val fillHover: Color,
+    val fontColor: Color,
+    val fontColorHover: Color
+)
+data class BevelButtonFont(
+    val fontSize: TextUnit,
+    val fontWeight: FontWeight
+)
+
+object BevelButtonDefaults {
+    @Composable
+    fun colors(
+        border: Color = AppTheme.Border,
+        borderHover: Color = if (border == AppTheme.Accent) AppTheme.AccentHover else AppTheme.BorderHover,
+        fill: Color = AppTheme.SurfaceHigh, fillHover: Color = AppTheme.SurfaceHigh,
+        textColor: Color = AppTheme.Font1, textColorHover: Color = AppTheme.Font1
+    ) = BevelButtonColors(
+        border = border, borderHover = borderHover,
+        fill = fill, fillHover = fillHover,
+        fontColor = textColor, fontColorHover = textColorHover
+    )
+
+    @Composable
+    fun font(
+        fontSize: TextUnit = Sizes.TextFieldFont,
+        fontWeight: FontWeight = FontWeight.Normal
+    ) = BevelButtonFont(
+        fontSize = fontSize, fontWeight = fontWeight
+    )
+}
+
+// 2. Componente base (Cascarón biselado que recibe cualquier contenido)
 @Composable
 fun BevelButton(
-    text: String,
-    icon: ImageVector? = null, // null por defecto
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    width: Dp? = null,
     height: Dp = 26.dp,
-    fontSize: TextUnit = 13.sp,
-    textColor: Color = AppTheme.TextPrimary,
-    dark: Color = AppTheme.Accent,
-    light: Color = AppTheme.Background,
-    fill: Color = AppTheme.Contrast,
+    colors: BevelButtonColors = BevelButtonDefaults.colors(),
+    content: @Composable RowScope.(isHovered: Boolean) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val currentBorder by animateColorAsState(if (isHovered) colors.borderHover else colors.border)
+    val currentFill by animateColorAsState(if (isHovered) colors.fillHover else colors.fill)
+
+    val widthModifier = if (width != null) Modifier.width(width) else Modifier.wrapContentWidth()
+    val innerWidthModifier = if (width != null) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()
 
     Box(
         modifier = modifier
+            .then(widthModifier)
             .height(height)
-            .wrapContentWidth()
-            .background(dark, RoundedCornerShape(8.dp))
+            .background(currentBorder, AppTheme.Round8)
             .padding(1.dp)
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .wrapContentWidth()
+                .then(innerWidthModifier)
                 .fillMaxHeight()
-                .background(light, RoundedCornerShape(8.dp))
-                .padding(1.dp)
+                .background(currentFill, AppTheme.Round8)
+                .clickable(
+                    onClick = onClick,
+                    interactionSource = interactionSource,
+                    indication = null
+                )
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .wrapContentWidth()
-                    .fillMaxHeight()
-                    .background(fill, RoundedCornerShape(8.dp))
-                    .clickable(
-                        onClick = onClick,
-                        interactionSource = interactionSource,
-                        indication = null
-                    )
-                    .padding(horizontal = if (icon != null) 6.dp else 12.dp)
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
             ) {
-                if (icon != null) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = text,
-                        tint = textColor,
-                        modifier = Modifier.size(14.dp)
-                    )
-                } else
-                    Text(text, color = textColor, fontSize = fontSize)
+                content(isHovered)
             }
+        }
+    }
+}
+
+@Composable
+fun BevelButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: String? = null, // Ruta al archivo SVG (ej: "icons/download.svg")
+    iconSize: Dp = 14.dp,
+    width: Dp? = null,
+    height: Dp = 26.dp,
+    colors: BevelButtonColors = BevelButtonDefaults.colors(),
+    font: BevelButtonFont = BevelButtonDefaults.font(),
+) {
+    BevelButton(
+        onClick = onClick,
+        modifier = modifier,
+        width = width,
+        height = height,
+        colors = colors
+    ) { isHovered ->
+        val currentFont by animateColorAsState(if (isHovered) colors.fontColorHover else colors.fontColor)
+
+        if (icon != null) {
+            var path = if (icon.startsWith("icons/")) icon else "icons/$icon"
+            if (!path.endsWith(".svg")) path = "$path.svg"
+            Box(
+                modifier = Modifier.size(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(path),
+                    contentDescription = null,
+                    tint = currentFont,
+                    modifier = Modifier.size(iconSize).offset(y = (-0.5).dp)
+                )
+            }
+            if (text.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+        }
+        if (text.isNotEmpty()) {
+            Text(
+                text = text,
+                color = currentFont,
+                fontSize = font.fontSize,
+                fontWeight = font.fontWeight,
+                modifier = Modifier.offset(y = (-1.5).dp)
+            )
         }
     }
 }
@@ -83,9 +164,9 @@ fun BevelButton(
 @Composable
 fun BevelContainer(
     modifier: Modifier = Modifier,
-    dark: Color = AppTheme.Accent,
-    light: Color = AppTheme.Background,
-    fill: Color = AppTheme.Contrast,
+    border: Color = AppTheme.Border,
+    border2: Color = AppTheme.Background,
+    fill: Color = AppTheme.Sunken,
     cornerRadius: Dp = 6.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -93,13 +174,13 @@ fun BevelContainer(
 
     Box(
         modifier = modifier
-            .background(dark, shape)
+            .background(border, shape)
             .padding(1.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(light, shape)
+                .background(border2, shape)
                 .padding(1.dp)
         ) {
             Box(
@@ -116,21 +197,29 @@ fun BevelContainer(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable // Dropdown genérico
 fun <T> SimpleDropdown(
-    value: String,
+    value: AnnotatedString,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     options: List<T>,
     onSelect: (T) -> Unit,
-    label: (T) -> String,
+    label: (T) -> AnnotatedString,
     modifier: Modifier = Modifier.width(200.dp),
     height: Dp = Sizes.TextFieldHeight
 ) {
+    val focusManager = LocalFocusManager.current
+
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = onExpandedChange,
+        onExpandedChange = { isOpening ->
+            if (isOpening)
+                focusManager.clearFocus()
+
+            onExpandedChange(isOpening)
+        },
         modifier = modifier.height(height)
     ) {
         BevelContainer(
+            border = if (expanded) AppTheme.Accent else AppTheme.Border,
             modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                 .fillMaxWidth()
@@ -140,9 +229,9 @@ fun <T> SimpleDropdown(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
             ) {
-                Text(text = value, color = AppTheme.TextPrimary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Text(text = value, color = AppTheme.Font1, fontSize = 13.sp, modifier = Modifier.weight(1f))
 
-                CompositionLocalProvider(LocalContentColor provides AppTheme.Accent) {
+                CompositionLocalProvider(LocalContentColor provides if (expanded) AppTheme.Accent else AppTheme.Border) {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 }
             }
@@ -151,14 +240,14 @@ fun <T> SimpleDropdown(
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { onExpandedChange(false) },
-            containerColor = AppTheme.Contrast
+            containerColor = AppTheme.Sunken
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
                     text = {
                         Text(
                             label(option),
-                            color = AppTheme.TextPrimary,
+                            color = AppTheme.Font1,
                             fontSize = Sizes.TextFieldFont
                         )
                     },
@@ -169,6 +258,27 @@ fun <T> SimpleDropdown(
         }
     }
 }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> SimpleDropdown(
+    value: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<T>,
+    onSelect: (T) -> Unit,
+    label: (T) -> String,
+    modifier: Modifier = Modifier.width(200.dp),
+    height: Dp = Sizes.TextFieldHeight
+) = SimpleDropdown(
+    value = AnnotatedString(value),
+    expanded = expanded,
+    onExpandedChange = onExpandedChange,
+    options = options,
+    onSelect = onSelect,
+    label = { AnnotatedString(label(it)) },
+    modifier = modifier,
+    height = height
+)
 
 @Composable
 fun CollapsibleSection(
@@ -190,13 +300,13 @@ fun CollapsibleSection(
             Icon(
                 painter = painterResource(if (expanded) "icons/arrow-down.svg" else "icons/arrow-right.svg"),
                 contentDescription = "expand",
-                tint = AppTheme.TextPrimary,
+                tint = AppTheme.Font1,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = title,
-                color = AppTheme.TextPrimary,
+                color = AppTheme.Font1,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )

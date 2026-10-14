@@ -38,7 +38,7 @@ fun TabBar(
                         modifier = Modifier
                             .width(24.dp)
                             .height(1.dp)
-                            .background(color = AppTheme.SecondaryBackground)
+                            .background(color = AppTheme.Surface)
                     )
                 }
             }

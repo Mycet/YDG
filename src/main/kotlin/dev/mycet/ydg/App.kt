@@ -10,6 +10,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.core.Dependencies
@@ -24,12 +27,12 @@ import dev.mycet.ydg.data.models.DownloadItem
 import dev.mycet.ydg.data.models.DownloadTask
 import dev.mycet.ydg.data.models.SimpleTask
 import dev.mycet.ydg.data.prefs.Prefs
+import dev.mycet.ydg.ui.components.BevelContainer
 import dev.mycet.ydg.ui.navigation.AppTab
+import dev.mycet.ydg.ui.navigation.TabBar
 import dev.mycet.ydg.ui.navigation.screens.MediaTab
 import dev.mycet.ydg.ui.navigation.screens.SetupTab
-import dev.mycet.ydg.ui.navigation.TabBar
 import dev.mycet.ydg.ui.theme.AppTheme
-import dev.mycet.ydg.ui.components.BevelContainer
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
@@ -41,7 +44,7 @@ fun App() {
     // 'remember' le dice a Compose que recuerde este valor entre recomposiciones
     // 'mutableStateOf' crea un estado reactivo — cuando cambia, la UI se redibuja
     var selectedTab by remember { mutableStateOf (
-        AppTab.match(if (Prefs.startupTab == "Last Used") Prefs.lastActiveTab else Prefs.startupTab)
+        AppTab.match(if (Prefs.startupTab == "Last Used") Prefs.openOnStartup else Prefs.startupTab)
     )}
     var setupWarning by remember { mutableStateOf("") }
 
@@ -56,73 +59,85 @@ fun App() {
             setupWarning = "⚠ " + issues.joinToString(" · ")
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(AppTheme.Background)              // El marco exterior
-                .padding(top = 4.dp, bottom = 4.dp, end = 12.dp)      // El "grosor" del marco
-        ) {
-            // Barra de tabs
-            TabBar(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
-            )
+    val customTextSelectionColors = remember {
+        TextSelectionColors(
+            handleColor = AppTheme.Accent, // los círculos en los extremos del texto seleccionado, que se ve en celular
+            backgroundColor = AppTheme.Accent.copy(alpha = 0.35f) // fondo
+        )
+    }
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Contenido según el tab seleccionado
-                Box(
-                    modifier = Modifier
-                        .weight(1f) // ocupa todo el espacio restante
-                        .fillMaxSize()
-                        .background(AppTheme.Background)
-                        .padding(2.dp)
-                ) {
-                    when (selectedTab) {
-                        AppTab.VIDEO -> MediaTab(false, scope, onNewDownload = { title ->
-                            val task = DownloadTask(title)
-                            downloads.add(task)
-                            task
-                        })
+    CompositionLocalProvider(LocalTextSelectionColors provides customTextSelectionColors) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(AppTheme.Background)              // El marco exterior
+                    .padding(top = 4.dp, bottom = 4.dp, end = 12.dp)      // El "grosor" del marco
+            ) {
+                // Barra de tabs
+                TabBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it },
+                )
 
-                        AppTab.AUDIO -> MediaTab(isAudio = true, scope, onNewDownload = { title ->
-                            val task = DownloadTask(title)
-                            downloads.add(task)
-                            task
-                        })
-
-                        AppTab.SETUP -> SetupTab(scope, onNewTask = { title ->
-                            val task = SimpleTask(title)
-                            downloads.add(task)
-                            task
-                        })
-                    }
-                }
-
-                // Barra inferior de errores
-                if (setupWarning.isNotEmpty()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Contenido según el tab seleccionado
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(24.dp)
+                            .weight(1f) // ocupa todo el espacio restante
+                            .fillMaxSize()
                             .background(AppTheme.Background)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(2.dp)
                     ) {
+                        when (selectedTab) {
+                            AppTab.VIDEO -> MediaTab(false, scope, onNewDownload = { title ->
+                                val task = DownloadTask(title)
+                                downloads.add(task)
+                                task
+                            })
 
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            text = setupWarning,
-                            color = AppTheme.ProgressBarError,
-                            fontSize = 13.sp,
-                            maxLines = 1
-                        )
+                            AppTab.AUDIO -> MediaTab(isAudio = true, scope, onNewDownload = { title ->
+                                val task = DownloadTask(title)
+                                downloads.add(task)
+                                task
+                            })
+
+                            AppTab.SETUP -> SetupTab(scope, onNewTask = { title ->
+                                val task = SimpleTask(title)
+                                downloads.add(task)
+                                task
+                            })
+                        }
+                    }
+
+                    // Barra inferior de errores
+                    if (setupWarning.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(24.dp)
+                                .background(AppTheme.Background)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                text = setupWarning,
+                                color = Color.Red,
+                                fontSize = 13.sp,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        DownloadQueueOverlay(downloads, modifier = Modifier.align(Alignment.TopEnd).padding(bottom = 16.dp, end = 24.dp))
+            DownloadQueueOverlay(
+                downloads,
+                modifier = Modifier.align(Alignment.TopEnd).padding(bottom = 16.dp, end = 24.dp)
+            )
+        }
     }
 }
 
@@ -171,7 +186,7 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                         ) {
                             Text(
                                 text = task.title,
-                                color = AppTheme.TextPrimary,
+                                color = AppTheme.Font1,
                                 fontSize = 12.sp,
                                 maxLines = 1
                             )
@@ -185,19 +200,19 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                                     task.isDone -> "Done"
                                     else -> "${(task.progress * 100).toInt()}%"
                                 }
-                                Text(text = statusStr, color = AppTheme.TextSecondary, fontSize = 10.sp)
+                                Text(text = statusStr, color = AppTheme.Font2, fontSize = 10.sp)
 
                                 if (task.sizeText.isNotEmpty()) {
                                     if (task.isDone)
                                         Text(
                                             text = "Final: ~${task.sizeText}",
-                                            color = AppTheme.TextSecondary,
+                                            color = AppTheme.Font2,
                                             fontSize = 10.sp
                                         )
                                     else
                                         Text(
                                             text = "${task.sizeText} - ${task.speed}",
-                                            color = AppTheme.TextSecondary,
+                                            color = AppTheme.Font2,
                                             fontSize = 10.sp
                                         )
                                 }
@@ -208,8 +223,8 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                                 modifier = Modifier.fillMaxWidth()
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
-                                color = if (task.hasError) AppTheme.ProgressBarError else AppTheme.Accent,
-                                backgroundColor = if (isHovered) AppTheme.Contrast.copy(alpha = 0.60f) else AppTheme.Contrast,
+                                color = if (task.hasError) Color.Red else AppTheme.Accent,
+                                backgroundColor = if (isHovered) AppTheme.Sunken.copy(alpha = 0.60f) else AppTheme.Sunken,
                             )
                         }
                     }

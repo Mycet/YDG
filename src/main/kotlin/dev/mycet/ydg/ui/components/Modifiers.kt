@@ -14,8 +14,8 @@ import dev.mycet.ydg.ui.theme.Sizes
 object Modifiers {
 
     fun Modifier.inputFieldStyle(): Modifier = this
-        .border(1.dp, AppTheme.Border2, RoundedCornerShape(4.dp))
-        .background(AppTheme.Contrast, RoundedCornerShape(4.dp))
+        .border(1.dp, AppTheme.Border, RoundedCornerShape(4.dp))
+        .background(AppTheme.Sunken, RoundedCornerShape(4.dp))
 
     fun Modifier.inputFieldSize(height: Dp = Sizes.TextFieldHeight, width: Dp = Sizes.TextFieldWidth): Modifier = this
         .height(height)
