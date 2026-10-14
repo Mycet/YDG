@@ -40,7 +40,7 @@ import kotlin.time.Duration.Companion.seconds
 // La UI se dibuja llamando a funciones, si algo cambia en la UI, Compose vuelve a llamar a la función
 
 @Composable
-fun App() {
+fun App(isSidebarExpanded: Boolean = false) {
     // 'remember' le dice a Compose que recuerde este valor entre recomposiciones
     // 'mutableStateOf' crea un estado reactivo — cuando cambia, la UI se redibuja
     var selectedTab by remember { mutableStateOf (
@@ -77,7 +77,11 @@ fun App() {
                 // Barra de tabs
                 TabBar(
                     selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
+                    isExpanded = isSidebarExpanded,
+                    onTabSelected = {
+                        selectedTab = it
+                        Prefs.openOnStartup = it.name
+                    },
                 )
 
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -90,13 +94,7 @@ fun App() {
                             .padding(2.dp)
                     ) {
                         when (selectedTab) {
-                            AppTab.VIDEO -> MediaTab(false, scope, onNewDownload = { title ->
-                                val task = DownloadTask(title)
-                                downloads.add(task)
-                                task
-                            })
-
-                            AppTab.AUDIO -> MediaTab(isAudio = true, scope, onNewDownload = { title ->
+                            AppTab.MEDIA -> MediaTab(scope, onNewDownload = { title ->
                                 val task = DownloadTask(title)
                                 downloads.add(task)
                                 task

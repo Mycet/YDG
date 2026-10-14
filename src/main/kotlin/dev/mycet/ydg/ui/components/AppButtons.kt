@@ -256,12 +256,16 @@ fun <T> FieldDropdown(
                         )
                     },
                     modifier = Modifier.height(Sizes.TextFieldHeight),
-                    onClick = { onSelect(option) }
+                    onClick = {
+                        onSelect(option)
+                        onExpandedChange(false)
+                    }
                 )
             }
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> FieldDropdown(

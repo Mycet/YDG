@@ -1,13 +1,18 @@
 package dev.mycet.ydg.ui.navigation.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -24,6 +29,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,9 +51,10 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (String) -> DownloadTask) {
+fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownload: (String) -> DownloadTask) {
     val focusManager = LocalFocusManager.current
 
+    var isAudio by remember { mutableStateOf(initialIsAudio) }
     var url by remember { mutableStateOf("") }
     var previewItems by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
     var isLoadingList by remember { mutableStateOf(false) }
@@ -58,8 +65,11 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
     var details by remember { mutableStateOf<VideoDetails?>(null) }
     var isLoadingDetails by remember { mutableStateOf(false) }
     var editedTitle by remember { mutableStateOf("") }
-    var selectedExt by remember { mutableStateOf("") }
-    var selectedQuality by remember { mutableStateOf<VideoFormat?>(null) }
+    var selectedVideoExt by remember { mutableStateOf("") }
+    var selectedVideoQuality by remember { mutableStateOf<VideoFormat?>(null) }
+    var selectedAudioExt by remember { mutableStateOf("") }
+    var selectedAudioQuality by remember { mutableStateOf<VideoFormat?>(null) }
+
     var expandedExt by remember { mutableStateOf(false) }
     var expandedQuality by remember { mutableStateOf(false) }
 
@@ -68,9 +78,11 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
         detailsCache[newDetails.id] = newDetails
         details = newDetails
         detailsLoadedForId = newDetails.id
-        editedTitle = newDetails.title ?: ""
-        selectedExt = getSelectedExtension(isAudio, newDetails)
-        selectedQuality = getSelectedFormat(isAudio, newDetails, selectedExt)
+        editedTitle = newDetails.title
+        selectedVideoExt = getSelectedExtension(false, newDetails)
+        selectedVideoQuality = getSelectedFormat(false, newDetails, selectedVideoExt)
+        selectedAudioExt = getSelectedExtension(true, newDetails)
+        selectedAudioQuality = getSelectedFormat(true, newDetails, selectedAudioExt)
     }
 
     LaunchedEffect(url) {
@@ -86,7 +98,7 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
             if (isPlaylist && !hasVideoId) {
                 previewItems = CommandManager.fetchVideoInfo(url) // Solo playlist
             } else {
-                isLoadingDetails = true;
+                isLoadingDetails = true
                 if (isPlaylist) { // Playlist apuntando a un video
                     val listDeferred = async { CommandManager.fetchVideoInfo(url) }
                     val detailsDeferred = async { CommandManager.fetchVideoDetails(url) }
@@ -97,16 +109,22 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                     previewItems = listDeferred.await()
                 } else
                     CommandManager.fetchVideoDetails(url)?.let { updateDetailsState(it) }
-                isLoadingDetails = false;
+                isLoadingDetails = false
             }
             isLoadingList = false
         }
     }
 
-    // Cuando cambia la extensión, buscar los formatos correspondientes
-    LaunchedEffect(selectedExt) {
-        val formats = if (isAudio) details?.audioFormatsForExt(selectedExt) else details?.videoFormatsForExt(selectedExt)
-        selectedQuality = formats?.firstOrNull()
+    LaunchedEffect(isAudio) {
+        details?.let { nonNullDetails ->
+            if (isAudio && selectedAudioExt.isEmpty()) {
+                selectedAudioExt = getSelectedExtension(true, nonNullDetails)
+                selectedAudioQuality = getSelectedFormat(true, nonNullDetails, selectedAudioExt)
+            } else if (!isAudio && selectedVideoExt.isEmpty()) {
+                selectedVideoExt = getSelectedExtension(false, nonNullDetails)
+                selectedVideoQuality = getSelectedFormat(false, nonNullDetails, selectedVideoExt)
+            }
+        }
     }
 
     Column(
@@ -121,12 +139,13 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
             .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 6.dp), // separación desde los bordes
         verticalArrangement = Arrangement.spacedBy(4.dp) // espaciado vertical entre elementos
     ) {
-        // Fila 1 — URL
+        // Fila 1 — URL & Botón Video / Audio
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
                 .height(28.dp) // ancho fijo para todos los elementos de la fila
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             var isFocused by remember { mutableStateOf(false) }
 
@@ -138,11 +157,11 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
             ) {
                 // BasicTextField permite mayor control que TextField
                 BasicTextField(
-                    modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused},
+                    modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused },
                     value = url,
                     onValueChange = {
                         url = it
-                    }, // { it -> videoURL = it }, 'it' es el nombre default del input y te ahorra el 'it ->'
+                    },
                     textStyle = TextStyle(color = AppTheme.Font1, fontSize = Sizes.TextFieldFont),
                     cursorBrush = SolidColor(AppTheme.Font1),
                     singleLine = true,
@@ -166,6 +185,15 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                     }
                 )
             }
+
+            VideoAudioToggle(
+                isAudio = isAudio,
+                onModeChange = { newMode ->
+                    expandedExt = false
+                    expandedQuality = false
+                    isAudio = newMode
+                }
+            )
         }
 
         // Fila 2 — Content
@@ -202,42 +230,75 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
 
                 previewItems.isNotEmpty() || details != null -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Details - Preview
+                        // Details - Preview con animación fade-in
                         details?.let { nonNullDetails ->
-                            MediaDetailsPanel(
-                                Modifier.weight(1f).fillMaxWidth().padding(8.dp),
-                                nonNullDetails,
-                                isAudio,
-                                editedTitle, { editedTitle = it },
-                                selectedExt, { selectedExt = it },
-                                selectedQuality, { selectedQuality = it },
-                                expandedExt, { expandedExt = it },
-                                expandedQuality, { expandedQuality = it },
-                                isLoadingDetails,
-                                nonNullDetails.duration.roundToInt(),
-                            ) {
-                                val task = onNewDownload(editedTitle)
-                                scope.launch {
-                                    val fmt = selectedQuality ?: return@launch
-                                    if (isAudio) {
-                                        CommandManager.downloadAudio(
-                                            url = nonNullDetails.url,
-                                            title = editedTitle,
-                                            formatId = fmt.formatId,
-                                            format = selectedExt,
-                                            bitrate = fmt.audioBitrate?.toInt() ?: 128,
-                                            onProgress = { line -> task.updateFromLog(line) }
-                                        )
-                                    } else {
-                                        CommandManager.downloadVideo(
-                                            url = nonNullDetails.url,
-                                            title = editedTitle,
-                                            formatId = fmt.formatId,
-                                            extension = fmt.extension,
-                                            onProgress = { line -> task.updateFromLog(line) }
-                                        )
+                            AnimatedContent(
+                                targetState = isAudio,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(durationMillis = 600)) togetherWith
+                                    fadeOut(animationSpec = tween(durationMillis = 150))
+                                },
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                label = "MediaDetailsFade"
+                            ) { currentIsAudio ->
+                                val currentExt = if (currentIsAudio) selectedAudioExt else selectedVideoExt
+                                val currentQuality = if (currentIsAudio) selectedAudioQuality else selectedVideoQuality
+
+                                MediaDetailsPanel(
+                                    modifier = Modifier.fillMaxSize().padding(8.dp),
+                                    details = nonNullDetails,
+                                    isAudio = currentIsAudio,
+                                    editedTitle = editedTitle,
+                                    onTitleChange = { editedTitle = it },
+                                    selectedExt = currentExt,
+                                    onExtChange = { newExt ->
+                                        if (currentIsAudio) {
+                                            selectedAudioExt = newExt
+                                            selectedAudioQuality = nonNullDetails.audioFormatsForExt(newExt).firstOrNull()
+                                        } else {
+                                            selectedVideoExt = newExt
+                                            selectedVideoQuality = nonNullDetails.videoFormatsForExt(newExt).firstOrNull()
+                                        }
+                                    },
+                                    selectedQuality = currentQuality,
+                                    onQualityChange = { newQuality ->
+                                        if (currentIsAudio) {
+                                            selectedAudioQuality = newQuality
+                                        } else {
+                                            selectedVideoQuality = newQuality
+                                        }
+                                    },
+                                    expandedExt = expandedExt,
+                                    onExpandedExtChange = { expandedExt = it },
+                                    expandedQuality = expandedQuality,
+                                    onExpandedQualityChange = { expandedQuality = it },
+                                    isLoadingDetails = isLoadingDetails,
+                                    duration = nonNullDetails.duration.roundToInt(),
+                                ) {
+                                    val task = onNewDownload(editedTitle)
+                                    scope.launch {
+                                        if (currentIsAudio) {
+                                            val fmt = selectedAudioQuality ?: return@launch
+                                            CommandManager.downloadAudio(
+                                                url = nonNullDetails.url,
+                                                title = editedTitle,
+                                                formatId = fmt.formatId,
+                                                format = selectedAudioExt,
+                                                bitrate = fmt.audioBitrate?.toInt() ?: 128,
+                                                onProgress = { line -> task.updateFromLog(line) }
+                                            )
+                                        } else {
+                                            val fmt = selectedVideoQuality ?: return@launch
+                                            CommandManager.downloadVideo(
+                                                url = nonNullDetails.url,
+                                                title = editedTitle,
+                                                formatId = fmt.formatId,
+                                                extension = fmt.extension,
+                                                onProgress = { line -> task.updateFromLog(line) }
+                                            )
+                                        }
+                                        task.isDone = true
                                     }
-                                    task.isDone = true
                                 }
                             }
                         }
@@ -262,6 +323,118 @@ fun MediaTab(isAudio: Boolean = false, scope: CoroutineScope, onNewDownload: (St
                                 }
                             }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VideoAudioToggle(
+    isAudio: Boolean,
+    onModeChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSourceVideo = remember { MutableInteractionSource() }
+    val isHoveredVideo by interactionSourceVideo.collectIsHoveredAsState()
+
+    val interactionSourceAudio = remember { MutableInteractionSource() }
+    val isHoveredAudio by interactionSourceAudio.collectIsHoveredAsState()
+
+    val shape = RoundedCornerShape(8.dp)
+    val segmentShape = RoundedCornerShape(6.dp)
+
+    Box(
+        modifier = modifier
+            .height(Sizes.TextFieldHeight)
+            .background(AppTheme.Border, shape)
+            .padding(1.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .background(AppTheme.Sunken, shape)
+                .padding(2.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxHeight(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Video option
+                val isVideoSelected = !isAudio
+                val videoBg by animateColorAsState(
+                    if (isVideoSelected) AppTheme.Accent else if (isHoveredVideo) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
+                    animationSpec = tween(300)
+                )
+                val videoContentColor by animateColorAsState(
+                    if (isVideoSelected) AppTheme.OnAccent else if (isHoveredVideo) AppTheme.Font1 else AppTheme.Font2,
+                    animationSpec = tween(300)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clip(segmentShape)
+                        .background(videoBg, segmentShape)
+                        .clickable(
+                            interactionSource = interactionSourceVideo,
+                            indication = null
+                        ) { onModeChange(false) }
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource("icons/tab_play.svg"),
+                        contentDescription = "Video",
+                        tint = videoContentColor,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = "Video",
+                        color = videoContentColor,
+                        fontSize = 12.sp,
+                        fontWeight = if (isVideoSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+
+                // Audio option
+                val audioBg by animateColorAsState(
+                    if (isAudio) AppTheme.Accent else if (isHoveredAudio) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
+                    animationSpec = tween(300)
+                )
+                val audioContentColor by animateColorAsState(
+                    if (isAudio) AppTheme.OnAccent else if (isHoveredAudio) AppTheme.Font1 else AppTheme.Font2,
+                    animationSpec = tween(300)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clip(segmentShape)
+                        .background(audioBg, segmentShape)
+                        .clickable(
+                            interactionSource = interactionSourceAudio,
+                            indication = null
+                        ) { onModeChange(true) }
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource("icons/tab_audio.svg"),
+                        contentDescription = "Audio",
+                        tint = audioContentColor,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = "Audio",
+                        color = audioContentColor,
+                        fontSize = 12.sp,
+                        fontWeight = if (isAudio) FontWeight.SemiBold else FontWeight.Normal,
+                    )
                 }
             }
         }

@@ -126,14 +126,19 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
 
             SetupRow {
                 var expanded by remember { mutableStateOf(false) }
+                val displayStartup = when (Prefs.openOnStartup.uppercase()) {
+                    "SETUP" -> "Setup"
+                    "LAST USED" -> "Last used"
+                    else -> "Media"
+                }
                 SettingsDropdown(
                     title = "Open on startup",
-                    value = Prefs.openOnStartup.lowercase().replaceFirstChar { it.uppercase() },
+                    value = displayStartup,
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
-                    options = listOf("VIDEO", "AUDIO", "SETUP", "LAST USED"),
+                    options = listOf("MEDIA", "SETUP", "LAST USED"),
                     onSelect = { Prefs.openOnStartup = it },
-                    dropdownLabel = { it -> it.replaceFirstChar { it.uppercase() } },
+                    dropdownLabel = { it -> it.lowercase().replaceFirstChar { c -> c.uppercase() } },
                 )
             }
 
@@ -428,7 +433,10 @@ fun <T> SettingsDropdown(
             expanded = expanded,
             onExpandedChange = onExpandedChange,
             options = options,
-            onSelect = onSelect,
+            onSelect = {
+                onSelect(it)
+                onExpandedChange(false)
+            },
             label = dropdownLabel
         )
     }

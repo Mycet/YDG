@@ -63,7 +63,7 @@ object Prefs {
             save()
         }
     var openOnStartup: String
-        get() = properties.getProperty("lastActiveTab", "VIDEO")
+        get() = properties.getProperty("lastActiveTab", "MEDIA")
         set(value) {
             properties.setProperty("lastActiveTab", value)
             save()
@@ -99,4 +99,8 @@ object Prefs {
     var customArgs: String
         get() = properties.getProperty("customArgs", "")
         set(value) { properties.setProperty("customArgs", value); save() }
+
+    var isSidebarExpanded: Boolean
+        get() = properties.getProperty("isSidebarExpanded", "false").toBoolean()
+        set(value) { properties.setProperty("isSidebarExpanded", value.toString()); save() }
 }

@@ -3,6 +3,7 @@ package dev.mycet.ydg
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.window.WindowDraggableArea
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -11,6 +12,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.ui.components.ActionIcon
 import dev.mycet.ydg.ui.theme.AppTheme
 import java.awt.Dimension
@@ -22,6 +24,7 @@ fun main() {
 
     application {
         val windowState = rememberWindowState(width = 1280.dp, height = 720.dp)
+        var isSidebarExpanded by remember { mutableStateOf(Prefs.isSidebarExpanded) }
 
         Window(
             onCloseRequest = ::exitApplication,
@@ -44,7 +47,10 @@ fun main() {
                         ActionIcon(
                             iconName = "top_expand",
                             description = "TopExpand",
-                        ) { }
+                        ) {
+                            isSidebarExpanded = !isSidebarExpanded
+                            Prefs.isSidebarExpanded = isSidebarExpanded
+                        }
 
                         Spacer(modifier = Modifier.weight(1f))
 
@@ -77,7 +83,7 @@ fun main() {
                     }
                 }
 
-                App()
+                App(isSidebarExpanded = isSidebarExpanded)
             }
         }
     }

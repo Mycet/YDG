@@ -1,8 +1,13 @@
 package dev.mycet.ydg.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -70,6 +75,8 @@ fun ActionIcon(
 fun NavigationIcon(
     isSelected: Boolean,
     iconName: String,
+    label: String? = null,
+    isExpanded: Boolean = false,
     modifier: Modifier = Modifier,
     backgroundSelected: Color = AppTheme.Accent.copy(alpha = 0.15f),
     background: Color = AppTheme.Background,
@@ -81,14 +88,21 @@ fun NavigationIcon(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
-    val backgroundColor = if (isSelected) backgroundSelected else background
+    val rowBg by animateColorAsState(
+        when {
+            isSelected -> backgroundSelected
+            isHovered && isExpanded -> Color.White.copy(alpha = 0.05f)
+            else -> background
+        },
+        animationSpec = tween(120)
+    )
 
-    Box(
-        contentAlignment = Alignment.Center,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
-            .background(backgroundColor)
+            .height(40.dp)
+            .background(rowBg)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -96,14 +110,16 @@ fun NavigationIcon(
             )
     ) {
         val iconBg by animateColorAsState(
-            if (isHovered && !isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent,
+            if (isHovered && !isSelected && !isExpanded) Color.White.copy(alpha = 0.08f) else Color.Transparent,
             animationSpec = tween(120)
         )
 
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .fillMaxSize()
+                .width(40.dp)
+                .fillMaxHeight()
+                .padding(2.dp)
                 .background(
                     color = iconBg,
                     shape = CircleShape
@@ -115,9 +131,27 @@ fun NavigationIcon(
             Icon(
                 painter = painterResource(path),
                 modifier = Modifier.size(iconSize),
-                contentDescription = "",
+                contentDescription = label ?: "",
                 tint = if (isSelected) AppTheme.Font1 else AppTheme.Font2,
             )
+        }
+
+        if (label != null) {
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = fadeIn(tween(150)),
+                exit = fadeOut(tween(100))
+            ) {
+                Text(
+                    text = label,
+                    color = if (isSelected) AppTheme.Font1 else AppTheme.Font2,
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                    modifier = Modifier.padding(start = 2.dp, end = 12.dp)
+                )
+            }
         }
     }
 }
