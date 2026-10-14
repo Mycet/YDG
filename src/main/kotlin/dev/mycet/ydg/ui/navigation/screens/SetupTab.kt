@@ -4,7 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,9 +21,10 @@ import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.downloader.CommandManager
 import dev.mycet.ydg.ui.components.ActionIcon
 import dev.mycet.ydg.ui.components.BevelContainer
+import dev.mycet.ydg.ui.components.FieldDropdown
+import dev.mycet.ydg.ui.components.FieldText
 import dev.mycet.ydg.ui.components.Modifiers.inputFieldSize
 import dev.mycet.ydg.ui.components.Modifiers.inputFieldStyle
-import dev.mycet.ydg.ui.components.SimpleDropdown
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
 import javafx.application.Platform
@@ -318,63 +318,47 @@ fun SettingsFolder(
     ) {
         SettingLabel(title = title, description = description)
 
-        BasicTextField(
+        FieldText(
             value = value,
             onValueChange = onValueChange,
-            textStyle = TextStyle(color = AppTheme.Font1, fontSize = 13.sp),
-            cursorBrush = SolidColor(AppTheme.Font1),
-            singleLine = true,
-            modifier = Modifier.inputFieldSize(width = 400.dp).inputFieldStyle(),
-            decorationBox = { innerTextField ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.CenterStart,
-                        modifier = Modifier.fillMaxHeight().weight(1f)
-                    ) {
-                        if (value.isEmpty()) {
-                            Text(placeholder, color = AppTheme.Font2, fontSize = 13.sp)
-                        }
-                        innerTextField()
-                    }
+            outerContent = {
+                ActionIcon(
+                    iconName = "folder",
+                    iconSize = 13.dp,
+                    shape = Sizes.Round6,
+                    modifier = Modifier.size(Sizes.TextFieldHeight)
+                ) { onLocate() }
 
-                    ActionIcon(
-                        iconName = "folder",
-                        iconSize = 13.dp,
-                        shape = CircleShape,
-                        modifier = Modifier.size(Sizes.TextFieldHeight)
-                    ) { onLocate() }
+                if (onDownload != null) {
+//                    Spacer(modifier = Modifier.width(2.dp))
+                    TooltipArea(
+                        tooltip = {
+                            Box(
+                                modifier = Modifier.inputFieldStyle().padding(8.dp)
+                            ) {
+                                Text("Download or update", color = AppTheme.Font1, fontSize = 13.sp)
+                            }
+                        },
+                        tooltipPlacement = TooltipPlacement.CursorPoint(offset = DpOffset((8).dp, (-8).dp), alignment = Alignment.TopEnd),
+                        delayMillis = 200
+                    ) {
+                        ActionIcon(
+                            iconName = "download",
+                            iconSize = 13.dp,
+                            shape = Sizes.Round6,
+                            modifier = Modifier.size(Sizes.TextFieldHeight)
+                        ) { onDownload() }
+                    }
                 }
             }
-        )
-
-        if (onDownload != null) {
-            Spacer(modifier = Modifier.width(2.dp))
-            TooltipArea(
-                tooltip = {
-                    Box(
-                        modifier = Modifier.inputFieldStyle().padding(8.dp)
-                    ) {
-                        Text("Download or update", color = AppTheme.Font1, fontSize = 13.sp)
-                    }
-                },
-                tooltipPlacement = TooltipPlacement.CursorPoint(offset = DpOffset((8).dp, (-8).dp), alignment = Alignment.TopEnd),
-                delayMillis = 200
-            ) {
-                ActionIcon(
-                    iconName = "download",
-                    iconSize = 13.dp,
-                    shape = CircleShape,
-                    modifier = Modifier.size(Sizes.TextFieldHeight)
-                ) { onDownload() }
+        ) {
+            if (value.isEmpty()) {
+                Text(placeholder, color = AppTheme.Font2, fontSize = 13.sp)
             }
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingText(
     id: String = "",
@@ -439,7 +423,7 @@ fun <T> SettingsDropdown(
     ) {
         SettingLabel(title = title, description = description)
 
-        SimpleDropdown(
+        FieldDropdown(
             value = value,
             expanded = expanded,
             onExpandedChange = onExpandedChange,

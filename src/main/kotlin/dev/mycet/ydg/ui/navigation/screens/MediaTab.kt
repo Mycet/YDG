@@ -33,7 +33,7 @@ import dev.mycet.ydg.downloader.CommandManager
 import dev.mycet.ydg.ui.components.BevelButton
 import dev.mycet.ydg.ui.components.BevelButtonDefaults
 import dev.mycet.ydg.ui.components.BevelContainer
-import dev.mycet.ydg.ui.components.SimpleDropdown
+import dev.mycet.ydg.ui.components.FieldDropdown
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
 import kotlinx.coroutines.CoroutineScope
@@ -308,14 +308,14 @@ private fun MediaDetailsPanel(
                                 edgeTreatment = BlurredEdgeTreatment.Unbounded
                             )
                             .alpha(0.5f)
-                            .clip(AppTheme.Round12),
+                            .clip(Sizes.Round12),
                     )
                 }
 
                 Box(
                     modifier = Modifier
                         .size(240.dp)
-                        .clip(AppTheme.Round12)
+                        .clip(Sizes.Round12)
                 ) {
                     if (thumbnail != null) {
                         Image(
@@ -397,7 +397,7 @@ private fun MediaDetailsPanel(
             // Dropdown formato (extensions)
             val extensions = if (isAudio) details.audioExtensions else details.videoExtensions
             PropRow(label = "Format") {
-                SimpleDropdown(
+                FieldDropdown(
                     value = selectedExt.uppercase(),
                     expanded = expandedExt,
                     onExpandedChange = onExpandedExtChange,
@@ -421,7 +421,7 @@ private fun MediaDetailsPanel(
                 }
             }
             PropRow(label = "Quality") {
-                SimpleDropdown(
+                FieldDropdown(
                     value = selectedQuality?.let { formatLabel(it) } ?: AnnotatedString(""),
                     expanded = expandedQuality,
                     onExpandedChange = onExpandedQualityChange,

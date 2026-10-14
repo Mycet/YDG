@@ -8,16 +8,20 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -84,7 +88,7 @@ fun BevelButton(
         modifier = modifier
             .then(widthModifier)
             .height(height)
-            .background(currentBorder, AppTheme.Round8)
+            .background(currentBorder, Sizes.Round8)
             .padding(1.dp)
     ) {
         Box(
@@ -92,7 +96,7 @@ fun BevelButton(
             modifier = Modifier
                 .then(innerWidthModifier)
                 .fillMaxHeight()
-                .background(currentFill, AppTheme.Round8)
+                .background(currentFill, Sizes.Round8)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
@@ -167,7 +171,7 @@ fun BevelContainer(
     border: Color = AppTheme.Border,
     border2: Color = AppTheme.Background,
     fill: Color = AppTheme.Sunken,
-    cornerRadius: Dp = 6.dp,
+    cornerRadius: Dp = 8.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(cornerRadius)
@@ -196,7 +200,7 @@ fun BevelContainer(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable // Dropdown genérico
-fun <T> SimpleDropdown(
+fun <T> FieldDropdown(
     value: AnnotatedString,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -260,7 +264,7 @@ fun <T> SimpleDropdown(
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun <T> SimpleDropdown(
+fun <T> FieldDropdown(
     value: String,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -269,7 +273,7 @@ fun <T> SimpleDropdown(
     label: (T) -> String,
     modifier: Modifier = Modifier.width(200.dp),
     height: Dp = Sizes.TextFieldHeight
-) = SimpleDropdown(
+) = FieldDropdown(
     value = AnnotatedString(value),
     expanded = expanded,
     onExpandedChange = onExpandedChange,
@@ -279,6 +283,49 @@ fun <T> SimpleDropdown(
     modifier = modifier,
     height = height
 )
+
+@Composable
+fun FieldText(
+    modifier: Modifier = Modifier.width(400.dp).height(Sizes.TextFieldHeight),
+    value: String,
+    onValueChange: (String) -> Unit,
+    outerContent: @Composable () -> Unit,
+    innerContent: @Composable () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    BevelContainer(
+        border = if (isFocused) AppTheme.Accent else AppTheme.Border,
+        modifier = modifier
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            textStyle = TextStyle(
+                color = AppTheme.Font1,
+            ),
+            cursorBrush = SolidColor(AppTheme.Font1),
+            singleLine = true,
+            modifier = Modifier.fillMaxSize()
+                .onFocusChanged { isFocused = it.isFocused},
+            decorationBox = { innerTextField ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxHeight().weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        innerContent()
+                        innerTextField()
+                    }
+                    outerContent()
+                }
+            }
+        )
+    }
+}
 
 @Composable
 fun CollapsibleSection(

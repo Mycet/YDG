@@ -1,8 +1,6 @@
 package dev.mycet.ydg.ui.theme
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 
 object AppTheme {
     val Sunken      = Color(0xff161616)  // inputs, barra lateral
@@ -20,9 +18,6 @@ object AppTheme {
 
     val Border      = Color(0xff333333)
     val BorderHover = Color(0xff3F3F3F)
-
-    val Round8      = RoundedCornerShape(8.dp)
-    val Round12     = RoundedCornerShape(12.dp)
 
 /*    val Contrast        = Color(0xff101010)
     val Contrast2       = Color(0xff161616)

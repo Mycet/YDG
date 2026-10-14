@@ -82,7 +82,7 @@ fun VideoCard(
         Box(
             modifier = Modifier
                 .size(120.dp)
-                .clip(AppTheme.Round12)
+                .clip(Sizes.Round12)
                 .background(AppTheme.Surface)
                 .alpha(alpha)
         ) {
@@ -117,8 +117,8 @@ fun VideoCard(
                 tooltip = {
                     Box(
                         modifier = Modifier
-                            .background(AppTheme.Sunken, AppTheme.Round8)
-                            .border(1.dp, AppTheme.Border, AppTheme.Round8)
+                            .background(AppTheme.Sunken, Sizes.Round8)
+                            .border(1.dp, AppTheme.Border, Sizes.Round8)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                             .widthIn(max = 280.dp)
                     ) {
