@@ -56,16 +56,16 @@ object Prefs {
             save()
         }
 
-    var startupTab: String
-        get() = properties.getProperty("startupTab", "Last Used")
+    var openOnStartup: String
+        get() = properties.getProperty("openOnStartup", "last open")
         set(value) {
-            properties.setProperty("startupTab", value)
+            properties.setProperty("openOnStartup", value)
             save()
         }
-    var openOnStartup: String
-        get() = properties.getProperty("lastActiveTab", "MEDIA")
+    var lastTab: String
+        get() = properties.getProperty("lastTab", "MEDIA")
         set(value) {
-            properties.setProperty("lastActiveTab", value)
+            properties.setProperty("lastTab", value)
             save()
         }
 

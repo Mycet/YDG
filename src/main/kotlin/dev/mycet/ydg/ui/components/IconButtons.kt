@@ -6,8 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -22,11 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.utils.toSVG
 
 // Action Icon
 // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
@@ -58,10 +59,8 @@ fun ActionIcon(
                 shape = shape,
             )
     ) {
-        var path = if (iconName.startsWith("icons/")) iconName else "icons/$iconName"
-        if (!path.endsWith(".svg")) path = "$path.svg"
         Icon(
-            painter = painterResource(path),
+            painter = painterResource(iconName.toSVG()),
             contentDescription = description,
             tint = if (isHovered) AppTheme.Font1 else AppTheme.Font2,
             modifier = Modifier.size(iconSize)

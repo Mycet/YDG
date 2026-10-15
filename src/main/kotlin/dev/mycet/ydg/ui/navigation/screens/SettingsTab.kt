@@ -1,36 +1,41 @@
 package dev.mycet.ydg.ui.navigation.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.TooltipArea
-import androidx.compose.foundation.TooltipPlacement
+import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.core.Dependencies
+import dev.mycet.ydg.core.DependencyState
+import dev.mycet.ydg.core.DependencyStatus
 import dev.mycet.ydg.data.models.SimpleTask
 import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.downloader.CommandManager
-import dev.mycet.ydg.ui.components.ActionIcon
-import dev.mycet.ydg.ui.components.BevelContainer
-import dev.mycet.ydg.ui.components.FieldDropdown
-import dev.mycet.ydg.ui.components.FieldText
-import dev.mycet.ydg.ui.components.Modifiers.inputFieldSize
-import dev.mycet.ydg.ui.components.Modifiers.inputFieldStyle
+import dev.mycet.ydg.ui.components.*
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
+import dev.mycet.ydg.utils.inputFieldSize
+import dev.mycet.ydg.utils.inputFieldStyle
+import dev.mycet.ydg.utils.titleCase
 import javafx.application.Platform
 import javafx.stage.DirectoryChooser
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.CompletableFuture
 
@@ -69,19 +74,40 @@ object NativeFolderPicker {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
+fun SettingsTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
+    val focusManager = LocalFocusManager.current
+
     var downloadFolder by remember { mutableStateOf(Prefs.downloadFolder) }
     var ytDlpFolder by remember { mutableStateOf(Prefs.ytDlpFolder) }
     var ffmpegFolder by remember { mutableStateOf(Prefs.ffmpegFolder) }
     var denoFolder by remember { mutableStateOf(Prefs.denoFolder) }
 
-    var browserCookies by remember { mutableStateOf(Prefs.browserForCookies) }
+    var ytDlpStatus by remember { mutableStateOf(DependencyStatus(DependencyState.CHECKING, "Checking...")) }
+    var ffmpegStatus by remember { mutableStateOf(DependencyStatus(DependencyState.CHECKING, "Checking...")) }
+    var denoStatus by remember { mutableStateOf(DependencyStatus(DependencyState.CHECKING, "Checking...")) }
+
+    LaunchedEffect(ytDlpFolder) {
+        withContext(Dispatchers.IO) { ytDlpStatus = Dependencies.getYtDlpStatus() }
+    }
+    LaunchedEffect(ffmpegFolder) {
+        withContext(Dispatchers.IO) { ffmpegStatus = Dependencies.getFfmpegStatus() }
+    }
+    LaunchedEffect(denoFolder) {
+        withContext(Dispatchers.IO) { denoStatus = Dependencies.getDenoStatus() }
+    }
+
     var rememberMediaSettings by remember { mutableStateOf(Prefs.rememberMediaSettings) }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                focusManager.clearFocus()
+            },
         horizontalAlignment = Alignment.Start
     ) {
         Column(
@@ -92,9 +118,9 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
         ) {
             SetupTitle(title = "General", topSpacer = false)
 
-            SetupRow {
+            SettingsRow {
                 SettingsFolder( // Downloads Folder
-                    title = "Downloads folder:",
+                    title = "Downloads folder",
                     value = downloadFolder,
                     onValueChange = { downloadFolder = it; Prefs.downloadFolder = it },
                     onLocate = {
@@ -110,7 +136,7 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                 )
             }
 
-            SetupRow {
+            SettingsRow {
                 var expanded by remember { mutableStateOf(false) }
                 SettingsDropdown( // Cookies
                     title = "Cookies",
@@ -124,25 +150,20 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                 )
             }
 
-            SetupRow {
+            SettingsRow {
                 var expanded by remember { mutableStateOf(false) }
-                val displayStartup = when (Prefs.openOnStartup.uppercase()) {
-                    "SETUP" -> "Setup"
-                    "LAST USED" -> "Last used"
-                    else -> "Media"
-                }
                 SettingsDropdown(
                     title = "Open on startup",
-                    value = displayStartup,
+                    value = Prefs.openOnStartup.titleCase(),
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
-                    options = listOf("MEDIA", "SETUP", "LAST USED"),
+                    options = listOf("media", "settings", "last open"),
                     onSelect = { Prefs.openOnStartup = it },
-                    dropdownLabel = { it -> it.lowercase().replaceFirstChar { c -> c.uppercase() } },
+                    dropdownLabel = { it.titleCase() },
                 )
             }
 
-            SetupRow(bottomSpacer = false) {
+            SettingsRow(bottomSpacer = false) {
                 SettingsSwitch(
                     title = "Remember media settings",
                     checked = rememberMediaSettings,
@@ -153,9 +174,10 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
 
             SetupTitle(title = "Dependencies")
 
-            SetupRow {
+            SettingsRow {
                 SettingsFolder( // YT-DLP
-                    title = "YT-DLP",
+                    title = "YT-DLP", description = ytDlpStatus.text,
+                    statusColor = ytDlpStatus.color,
                     value = ytDlpFolder,
                     onValueChange = { ytDlpFolder = it; Prefs.ytDlpFolder = it },
                     onLocate = {
@@ -167,6 +189,7 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                             Prefs.ytDlpFolder = it
                         }
                     },
+                    downloadState = ytDlpStatus.state,
                     onDownload = {
                         runDownloadTask(
                             scope, onNewTask, "Downloading yt-dlp...", ytDlpFolder,
@@ -190,9 +213,10 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                 )
             }
 
-            SetupRow {
+            SettingsRow {
                 SettingsFolder( // ffmpeg
-                    title = "ffmpeg",
+                    title = "ffmpeg", description = ffmpegStatus.text,
+                    statusColor = ffmpegStatus.color,
                     value = ffmpegFolder,
                     onValueChange = { ffmpegFolder = it; Prefs.ffmpegFolder = it },
                     onLocate = {
@@ -204,6 +228,7 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                             Prefs.ffmpegFolder = it
                         }
                     },
+                    downloadState = ffmpegStatus.state,
                     onDownload = {
                         runDownloadTask(
                             scope, onNewTask, "Downloading ffmpeg...", ffmpegFolder,
@@ -219,9 +244,10 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                 )
             }
 
-            SetupRow {
+            SettingsRow(bottomSpacer = false) {
                 SettingsFolder( // Deno
-                    title = "deno",
+                    title = "deno", description = denoStatus.text,
+                    statusColor = denoStatus.color,
                     value = denoFolder,
                     onValueChange = { denoFolder = it; Prefs.denoFolder = it },
                     onLocate = {
@@ -233,6 +259,7 @@ fun SetupTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                             Prefs.denoFolder = it
                         }
                     },
+                    downloadState = denoStatus.state,
                     onDownload = {
                         runDownloadTask(
                             scope, onNewTask, "Downloading deno...", denoFolder,
@@ -261,14 +288,54 @@ fun SetupTitle(
     if (topSpacer) Spacer(modifier = Modifier.height(32.dp))
     Text(
         text = title,
-        fontSize = 16.sp,
+        fontSize = Sizes.TitleFont,
         color = AppTheme.Font1,
-        fontWeight = FontWeight.Bold
+        fontWeight = Sizes.TitleWeight
     )
     if (bottomSpacer) Spacer(modifier = Modifier.height(4.dp))
 }
+
 @Composable
-fun SetupRow(
+fun RowScope.SettingLabel(
+    title: String,
+    description: String = "",
+    statusColor: Color? = null
+) {
+    Column(
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier.weight(1f)
+    ) {
+        Text(
+            text = title,
+            color = AppTheme.Font1,
+            fontSize = Sizes.TextFieldFont
+        )
+        if (description.isNotBlank()) {
+            Row (
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (statusColor != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(statusColor, shape = CircleShape)
+                    )
+                }
+
+                Text(
+                    text = description,
+                    color = AppTheme.Font2,
+                    fontSize = Sizes.TextFieldFont
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsRow(
     topSpacer: Boolean = true, bottomSpacer: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -282,79 +349,71 @@ fun SetupRow(
     }
 }
 
-@Composable
-fun RowScope.SettingLabel(
-    title: String,
-    description: String = ""
-) {
-    Column(
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.weight(1f)
-    ) {
-        Text(
-            text = title,
-            color = AppTheme.Font1,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Normal
-        )
-        if (description.isNotBlank()) {
-            Text(
-                text = description,
-                color = AppTheme.Font2,
-                fontSize = 11.sp
-            )
-        }
-    }
-}
-
 @Composable @OptIn(ExperimentalFoundationApi::class)
 fun SettingsFolder(
-    title: String, description: String = "",
+    title: String, description: String = "", placeholder: String = "Select a folder...",
+    statusColor: Color? = null,
     value: String,
     onValueChange: (String) -> Unit,
     onLocate: () -> Unit,
+    downloadState: DependencyState? = null,
     onDownload: (() -> Unit)? = null,  // null = no muestra el botón
-    placeholder: String = "Select a folder..."
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText)
     ) {
-        SettingLabel(title = title, description = description)
+        SettingLabel(title = title, description = description, statusColor = statusColor)
 
         FieldText(
             value = value,
             onValueChange = onValueChange,
+            color = AppTheme.Font2,
             outerContent = {
-                ActionIcon(
-                    iconName = "folder",
-                    iconSize = 13.dp,
-                    shape = Sizes.Round6,
-                    modifier = Modifier.size(Sizes.TextFieldHeight)
-                ) { onLocate() }
-
                 if (onDownload != null) {
-//                    Spacer(modifier = Modifier.width(2.dp))
+                    val tooltip = downloadState?.let {
+                        when (it) {
+                            DependencyState.UP_TO_DATE -> "Up to date"
+                            DependencyState.UPDATE_AVAILABLE -> "Update"
+                            DependencyState.NOT_FOUND -> "Install"
+                            DependencyState.CHECKING -> "Checking..."
+                        }
+                    } ?: "Install"
+
+                    val icon = downloadState?.let {
+                        when (it) {
+                            DependencyState.UP_TO_DATE -> "reload"
+                            DependencyState.UPDATE_AVAILABLE -> "reload"
+                            DependencyState.NOT_FOUND -> "download"
+                            DependencyState.CHECKING -> "download"
+                        }
+                    } ?: "download"
+
                     TooltipArea(
                         tooltip = {
                             Box(
                                 modifier = Modifier.inputFieldStyle().padding(8.dp)
                             ) {
-                                Text("Download or update", color = AppTheme.Font1, fontSize = 13.sp)
+                                Text(tooltip, color = AppTheme.Font1, fontSize = 13.sp)
                             }
                         },
                         tooltipPlacement = TooltipPlacement.CursorPoint(offset = DpOffset((8).dp, (-8).dp), alignment = Alignment.TopEnd),
                         delayMillis = 200
                     ) {
                         ActionIcon(
-                            iconName = "download",
+                            iconName = icon,
                             iconSize = 13.dp,
                             shape = Sizes.Round6,
-                            modifier = Modifier.size(Sizes.TextFieldHeight)
+                            modifier = Modifier.size(Sizes.FieldHeightText)
                         ) { onDownload() }
                     }
                 }
+                ActionIcon(
+                    iconName = "folder",
+                    iconSize = 13.dp,
+                    shape = Sizes.Round6,
+                    modifier = Modifier.size(Sizes.FieldHeightText)
+                ) { onLocate() }
             }
         ) {
             if (value.isEmpty()) {
@@ -366,7 +425,6 @@ fun SettingsFolder(
 
 @Composable
 fun SettingText(
-    id: String = "",
     title: String, description: String = "",
     value: String, placeholder: String = "",
     onValueChange: (String) -> Unit,
@@ -374,7 +432,7 @@ fun SettingText(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         // defaultMinSize permite que la fila crezca si hay 2 líneas de texto
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText)
     ) {
         SettingLabel(title = title, description = description)
 
@@ -382,9 +440,7 @@ fun SettingText(
 
         BevelContainer(
             border = if (isFocused) AppTheme.Accent else AppTheme.Border,
-            modifier = Modifier
-                .width(400.dp)
-                .height(Sizes.TextFieldHeight)
+            modifier = Modifier.inputFieldSize()
         ) {
             BasicTextField(
                 value = value,
@@ -409,13 +465,11 @@ fun SettingText(
     }
 }
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> SettingsDropdown(
     title: String,
     value: String, description: String = "",
-    modifier: Modifier = Modifier.height(Sizes.TextFieldHeight),
+    modifier: Modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText),
     options: List<T>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -424,7 +478,7 @@ fun <T> SettingsDropdown(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
+        modifier = modifier
     ) {
         SettingLabel(title = title, description = description)
 
@@ -433,10 +487,7 @@ fun <T> SettingsDropdown(
             expanded = expanded,
             onExpandedChange = onExpandedChange,
             options = options,
-            onSelect = {
-                onSelect(it)
-                onExpandedChange(false)
-            },
+            onSelect = onSelect,
             label = dropdownLabel
         )
     }
@@ -452,21 +503,13 @@ fun SettingsSwitch(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText)
     ) {
         SettingLabel(title = title, description = description)
 
-        Switch(
-            modifier = Modifier.height(22.dp).width(40.dp),
-            checked = checked, onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = AppTheme.Accent,
-                checkedTrackColor = AppTheme.Sunken,
-                checkedBorderColor = AppTheme.Sunken,
-                uncheckedThumbColor = AppTheme.Font2,
-                uncheckedTrackColor = AppTheme.Sunken,
-                uncheckedBorderColor = AppTheme.Sunken
-            )
+        FieldSwitch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
     }
 }

@@ -2,12 +2,15 @@ package dev.mycet.ydg.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
@@ -29,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
+import dev.mycet.ydg.utils.formatPathMiddle
+import dev.mycet.ydg.utils.toSVG
 
 data class BevelButtonColors(
     val border: Color,
@@ -171,10 +176,9 @@ fun BevelContainer(
     border: Color = AppTheme.Border,
     border2: Color = AppTheme.Background,
     fill: Color = AppTheme.Sunken,
-    cornerRadius: Dp = 8.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(cornerRadius)
+    val shape = Sizes.Round8
 
     Box(
         modifier = modifier
@@ -208,7 +212,7 @@ fun <T> FieldDropdown(
     onSelect: (T) -> Unit,
     label: (T) -> AnnotatedString,
     modifier: Modifier = Modifier.width(200.dp),
-    height: Dp = Sizes.TextFieldHeight
+    height: Dp = Sizes.FieldHeightText
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -233,7 +237,7 @@ fun <T> FieldDropdown(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
             ) {
-                Text(text = value, color = AppTheme.Font1, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Text(text = value, color = AppTheme.Font1, fontSize = Sizes.TextFieldFont, modifier = Modifier.weight(1f))
 
                 CompositionLocalProvider(LocalContentColor provides if (expanded) AppTheme.Accent else AppTheme.Border) {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
@@ -244,9 +248,12 @@ fun <T> FieldDropdown(
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { onExpandedChange(false) },
-            containerColor = AppTheme.Sunken
+            containerColor = AppTheme.Sunken,
+            shape = Sizes.Round8
         ) {
             options.forEach { option ->
+                val isSelected = label(option).text == value.text
+
                 DropdownMenuItem(
                     text = {
                         Text(
@@ -255,7 +262,18 @@ fun <T> FieldDropdown(
                             fontSize = Sizes.TextFieldFont
                         )
                     },
-                    modifier = Modifier.height(Sizes.TextFieldHeight),
+                    trailingIcon = {
+                        if (isSelected) {
+                            Icon(
+                                painter = painterResource("check".toSVG()),
+                                contentDescription = "Selected",
+                                modifier = Modifier.size(14.dp),
+                                tint = AppTheme.Accent
+                            )
+                        }
+                    },
+                    modifier = Modifier.height(Sizes.FieldHeightText),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                     onClick = {
                         onSelect(option)
                         onExpandedChange(false)
@@ -275,8 +293,8 @@ fun <T> FieldDropdown(
     options: List<T>,
     onSelect: (T) -> Unit,
     label: (T) -> String,
-    modifier: Modifier = Modifier.width(200.dp),
-    height: Dp = Sizes.TextFieldHeight
+    modifier: Modifier = Modifier.width(Sizes.FieldWidthDropdown),
+    height: Dp = Sizes.FieldHeightText
 ) = FieldDropdown(
     value = AnnotatedString(value),
     expanded = expanded,
@@ -290,10 +308,11 @@ fun <T> FieldDropdown(
 
 @Composable
 fun FieldText(
-    modifier: Modifier = Modifier.width(400.dp).height(Sizes.TextFieldHeight),
+    modifier: Modifier = Modifier.width(Sizes.FieldWidthText).height(Sizes.FieldHeightText),
     value: String,
+    color: Color = AppTheme.Font1,
     onValueChange: (String) -> Unit,
-    outerContent: @Composable () -> Unit,
+    outerContent: (@Composable () -> Unit)? = null,
     innerContent: @Composable () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -306,9 +325,9 @@ fun FieldText(
             value = value,
             onValueChange = onValueChange,
             textStyle = TextStyle(
-                color = AppTheme.Font1,
+                color = color,
             ),
-            cursorBrush = SolidColor(AppTheme.Font1),
+            cursorBrush = SolidColor(color),
             singleLine = true,
             modifier = Modifier.fillMaxSize()
                 .onFocusChanged { isFocused = it.isFocused},
@@ -322,11 +341,52 @@ fun FieldText(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         innerContent()
-                        innerTextField()
+                        if (!isFocused && value.isNotEmpty()) {
+                            Text(
+                                text = value.formatPathMiddle(36),
+                                color = color,
+                                fontSize = Sizes.TextFieldFont,
+                                maxLines = 1
+                            )
+                        } else
+                            innerTextField()
                     }
-                    outerContent()
+
+                    if (outerContent != null)
+                        outerContent()
                 }
             }
+        )
+    }
+}
+
+@Composable
+fun FieldSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 25.5.dp else 4.dp,
+        animationSpec = tween(durationMillis = 150)
+    )
+    Box(
+        modifier = Modifier
+            .width(48.dp)
+            .height(26.dp)
+            .background(AppTheme.Sunken, Sizes.Round12)
+            .border(1.dp, AppTheme.Border, Sizes.Round12)
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 2.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .size(18.dp)
+                .background(
+                    if (checked) AppTheme.Accent else AppTheme.Font2,
+                    CircleShape
+                )
         )
     }
 }

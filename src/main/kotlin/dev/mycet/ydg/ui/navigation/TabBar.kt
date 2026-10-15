@@ -35,7 +35,7 @@ fun TabBar(
         horizontalAlignment = Alignment.Start,
     ) {
         AppTab.entries.forEach { tab ->
-            if (tab == AppTab.SETUP) {
+            if (tab == AppTab.SETTINGS) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

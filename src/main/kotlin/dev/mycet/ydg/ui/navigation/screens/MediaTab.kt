@@ -36,10 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.data.models.*
 import dev.mycet.ydg.downloader.CommandManager
-import dev.mycet.ydg.ui.components.BevelButton
-import dev.mycet.ydg.ui.components.BevelButtonDefaults
-import dev.mycet.ydg.ui.components.BevelContainer
-import dev.mycet.ydg.ui.components.FieldDropdown
+import dev.mycet.ydg.ui.components.*
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
 import kotlinx.coroutines.CoroutineScope
@@ -143,47 +140,24 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
-                .height(28.dp) // ancho fijo para todos los elementos de la fila
+                .height(Sizes.FieldHeightText) // ancho fijo para todos los elementos de la fila
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            var isFocused by remember { mutableStateOf(false) }
-
-            BevelContainer(
-                border = if (isFocused) AppTheme.Accent else AppTheme.Border,
+            FieldText(
                 modifier = Modifier
-                    .weight(1f)  // ocupa todo el espacio restante de la fila
-                    .height(Sizes.TextFieldHeight),
+                    .weight(1f)
+                    .height(Sizes.FieldHeightText),
+                value = url,
+                onValueChange = { url = it },
             ) {
-                // BasicTextField permite mayor control que TextField
-                BasicTextField(
-                    modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused },
-                    value = url,
-                    onValueChange = {
-                        url = it
-                    },
-                    textStyle = TextStyle(color = AppTheme.Font1, fontSize = Sizes.TextFieldFont),
-                    cursorBrush = SolidColor(AppTheme.Font1),
-                    singleLine = true,
-                    decorationBox = { innerTextField ->
-                        Box(
-                            contentAlignment = Alignment.CenterStart,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 8.dp)
-                        ) {
-                            if (url.isEmpty()) {
-                                // Texto que muestra cuando el campo está vacío
-                                Text(
-                                    "Insert link here",
-                                    color = AppTheme.Font2,
-                                    fontSize = Sizes.TextFieldFont
-                                )
-                            }
-                            innerTextField()  // el campo de texto real va acá adentro
-                        }
-                    }
-                )
+                if (url.isEmpty()) {
+                    Text(
+                        "Insert link here",
+                        color = AppTheme.Font2,
+                        fontSize = Sizes.TextFieldFont
+                    )
+                }
             }
 
             VideoAudioToggle(
@@ -346,7 +320,7 @@ fun VideoAudioToggle(
 
     Box(
         modifier = modifier
-            .height(Sizes.TextFieldHeight)
+            .height(Sizes.FieldHeightText)
             .background(AppTheme.Border, shape)
             .padding(1.dp)
     ) {
@@ -545,8 +519,8 @@ private fun MediaDetailsPanel(
                 BevelContainer(
                     border = if (isFocused) AppTheme.Accent else AppTheme.Border,
                     modifier = Modifier
-                        .width(400.dp)
-                        .height(Sizes.TextFieldHeight)
+                        .width(Sizes.FieldWidthText)
+                        .height(Sizes.FieldHeightText)
                 ) {
                     BasicTextField(
                         value = editedTitle,

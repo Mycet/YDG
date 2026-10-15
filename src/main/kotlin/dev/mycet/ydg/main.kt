@@ -3,7 +3,10 @@ package dev.mycet.ydg
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.window.WindowDraggableArea
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,6 +19,8 @@ import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.ui.components.ActionIcon
 import dev.mycet.ydg.ui.theme.AppTheme
 import java.awt.Dimension
+import java.awt.Rectangle
+import java.awt.Toolkit
 
 // Yt-Dlp Gui
 fun main() {
@@ -25,17 +30,24 @@ fun main() {
     application {
         val windowState = rememberWindowState(width = 1280.dp, height = 720.dp)
         var isSidebarExpanded by remember { mutableStateOf(Prefs.isSidebarExpanded) }
+        var isMaximized by remember { mutableStateOf(false) }
+        var normalBounds by remember { mutableStateOf<Rectangle?>(null) }
 
         Window(
             onCloseRequest = ::exitApplication,
             title = "YDG v0.1.0",
             state = windowState,
-            undecorated = true
+            undecorated = true,
+            resizable = !isMaximized
         ) {
             window.minimumSize = Dimension(1280, 720)
+            window.background = java.awt.Color(0x1C, 0x1C, 0x1C)
 
-            Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(AppTheme.Background)
+            ) {
                 WindowDraggableArea {
                     Row(
                         modifier = Modifier
@@ -66,16 +78,27 @@ fun main() {
                             iconName = if (windowState.placement == WindowPlacement.Floating) "top_maximize" else "top_restore",
                             description = if (windowState.placement == WindowPlacement.Floating) "Maximize" else "Restore",
                         ) {
-                            windowState.placement = if (windowState.placement == WindowPlacement.Floating) {
-                                WindowPlacement.Maximized
+                            if (isMaximized) {
+                                normalBounds?.let { window.bounds = it }
+                                isMaximized = false
                             } else {
-                                WindowPlacement.Floating
+                                normalBounds = window.bounds
+                                val gc = window.graphicsConfiguration
+                                val bounds = gc.bounds
+                                val insets = Toolkit.getDefaultToolkit().getScreenInsets(gc)
+                                window.setBounds(
+                                    bounds.x + insets.left,
+                                    bounds.y + insets.top,
+                                    bounds.width - insets.left - insets.right,
+                                    bounds.height - insets.top - insets.bottom
+                                )
+                                isMaximized = true
                             }
                         }
                         // Botón Cerrar
                         ActionIcon(
                             hoveredColor = Color.Red,
-                            iconName = "top_close",
+                            iconName = "cross",
                             description = "Close",
                         ) {
                             exitApplication()

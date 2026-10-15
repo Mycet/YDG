@@ -19,6 +19,10 @@ object AppTheme {
     val Border      = Color(0xff333333)
     val BorderHover = Color(0xff3F3F3F)
 
+    val Green       = Color(0xff6FBF8E)
+    val Yellow      = Color(0xffE2C07D)
+    val Red         = Color(0xffE27D7D)
+
 /*    val Contrast        = Color(0xff101010)
     val Contrast2       = Color(0xff161616)
     val Background      = Color(0xff1C1C1C)

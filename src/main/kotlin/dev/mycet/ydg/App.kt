@@ -31,7 +31,7 @@ import dev.mycet.ydg.ui.components.BevelContainer
 import dev.mycet.ydg.ui.navigation.AppTab
 import dev.mycet.ydg.ui.navigation.TabBar
 import dev.mycet.ydg.ui.navigation.screens.MediaTab
-import dev.mycet.ydg.ui.navigation.screens.SetupTab
+import dev.mycet.ydg.ui.navigation.screens.SettingsTab
 import dev.mycet.ydg.ui.theme.AppTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
@@ -43,9 +43,11 @@ import kotlin.time.Duration.Companion.seconds
 fun App(isSidebarExpanded: Boolean = false) {
     // 'remember' le dice a Compose que recuerde este valor entre recomposiciones
     // 'mutableStateOf' crea un estado reactivo — cuando cambia, la UI se redibuja
-    var selectedTab by remember { mutableStateOf (
-        AppTab.match(if (Prefs.startupTab == "Last Used") Prefs.openOnStartup else Prefs.startupTab)
-    )}
+    val initialTab =
+        if (Prefs.openOnStartup.equals("last open", ignoreCase = true)) Prefs.lastTab
+        else Prefs.openOnStartup
+
+    var selectedTab by remember { mutableStateOf(AppTab.match(initialTab)) }
     var setupWarning by remember { mutableStateOf("") }
 
     val downloads = remember { mutableStateListOf<DownloadItem>() }
@@ -80,7 +82,7 @@ fun App(isSidebarExpanded: Boolean = false) {
                     isExpanded = isSidebarExpanded,
                     onTabSelected = {
                         selectedTab = it
-                        Prefs.openOnStartup = it.name
+                        Prefs.lastTab = it.name
                     },
                 )
 
@@ -100,7 +102,7 @@ fun App(isSidebarExpanded: Boolean = false) {
                                 task
                             })
 
-                            AppTab.SETUP -> SetupTab(scope, onNewTask = { title ->
+                            AppTab.SETTINGS -> SettingsTab(scope, onNewTask = { title ->
                                 val task = SimpleTask(title)
                                 downloads.add(task)
                                 task

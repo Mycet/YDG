@@ -1,17 +1,22 @@
 package dev.mycet.ydg.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object Sizes {
     // Font
-    val TooltipFont = 11.sp
-    val TextFieldFont = 13.sp
+    val TooltipFont = 12.sp
+    val TextFieldFont = 14.sp
+    val TitleFont = 18.sp
+
+    val TitleWeight = FontWeight.SemiBold
 
     // Fields
-    val TextFieldHeight = 26.dp
-    val TextFieldWidth = 130.dp
+    val FieldHeightText = 26.dp
+    val FieldWidthText = 400.dp
+    val FieldWidthDropdown = 200.dp
 
     // Shapes
     val Round4      = RoundedCornerShape(4.dp)
