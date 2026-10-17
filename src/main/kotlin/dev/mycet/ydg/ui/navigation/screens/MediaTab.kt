@@ -12,7 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
@@ -45,6 +50,14 @@ import dev.mycet.ydg.utils.fieldStyle
 import kotlinx.coroutines.*
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.platform.LocalClipboardManager
+import java.util.Objects.toString
+import androidx.compose.foundation.TooltipArea
+import androidx.compose.foundation.TooltipPlacement
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
+
 
 data class MediaOptions(
     val title: String = "",
@@ -58,6 +71,7 @@ data class MediaOptions(
 
 enum class MediaType {VIDEO, AUDIO};
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownload: (String) -> DownloadTask) {
     val focusManager = LocalFocusManager.current
@@ -81,6 +95,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
 
     var expandedExt by remember { mutableStateOf(false) }
     var expandedQuality by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
 
     // Es como una función dentro del compose, tiene acceso a las variables del compose y permite simplificar código que se repite
     val updateDetailsState = { newDetails: VideoDetails ->
@@ -169,6 +184,68 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                     .height(Sizes.TextFieldHeight),
                 value = url,
                 onValueChange = { url = it },
+                leadingIcon = {
+                    Icon (
+                        painter = painterResource("icons/link.svg"),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = AppTheme.Font2
+                    )
+                },
+
+                trailingIcon = {
+                    TooltipArea(
+                        tooltip = {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = AppTheme.Sunken,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .border(1.dp, AppTheme.Border, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text (
+                                    text = "Copy from clipboard",
+                                    color = AppTheme.Font1,
+                                    fontSize = Sizes.FieldFontSize
+                                )
+                            }
+                        },
+                        delayMillis = 300,
+                        tooltipPlacement = TooltipPlacement.CursorPoint(
+                            alignment = Alignment.BottomEnd,
+                            offset = DpOffset(0.dp, 8.dp)
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource("icons/clipboard.svg"),
+                            contentDescription = "Copy from clipboard",
+                            tint = AppTheme.Font2,
+                            modifier = Modifier.size(20.dp)
+                                .clickable {
+                                    val texto = clipboardManager.getText()?.text
+                                    if (!clipboardManager.equals(" ")) {
+                                        url = toString(texto)
+                                    }
+                                }
+                        )
+                    }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Icon(
+                        painter = painterResource("icons/continue.svg"),
+                        contentDescription = null,
+                        tint = AppTheme.Font2,
+                        modifier = Modifier.size(20.dp).clickable {
+
+                        }
+
+                    )
+
+                },
+
             ) {
                 if (url.isEmpty()) {
                     Text(
@@ -178,6 +255,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                     )
                 }
             }
+
 
             MultiOptionSwitch(
                 options = MediaType.entries,
@@ -703,120 +781,6 @@ private fun MediaPlaylist(
         )
     }
 }
-
-@Composable
-fun VideoAudioToggle(
-    isAudio: Boolean,
-    onModeChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val interactionSourceVideo = remember { MutableInteractionSource() }
-    val isHoveredVideo by interactionSourceVideo.collectIsHoveredAsState()
-
-    val interactionSourceAudio = remember { MutableInteractionSource() }
-    val isHoveredAudio by interactionSourceAudio.collectIsHoveredAsState()
-
-    val shape = RoundedCornerShape(8.dp)
-    val segmentShape = RoundedCornerShape(6.dp)
-
-    Box(
-        modifier = modifier
-            .height(Sizes.TextFieldHeight)
-            .background(AppTheme.Border, shape)
-            .padding(1.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .background(AppTheme.Sunken, shape)
-                .padding(2.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxHeight(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Video option
-                val isVideoSelected = !isAudio
-                val videoBg by animateColorAsState(
-                    if (isVideoSelected) AppTheme.Accent.copy(0.15f) else if (isHoveredVideo) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
-                    animationSpec = tween(300)
-                )
-                val videoContentColor by animateColorAsState(
-                    if (isVideoSelected) AppTheme.Accent else if (isHoveredVideo) AppTheme.Font1 else AppTheme.Font2,
-                    animationSpec = tween(300)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .clip(segmentShape)
-                        .background(videoBg, segmentShape)
-                        .clickable(
-                            interactionSource = interactionSourceVideo,
-                            indication = null
-                        ) { onModeChange(false) }
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        painter = painterResource("icons/tab_play.svg"),
-                        contentDescription = "Video",
-                        tint = videoContentColor,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(5.dp))
-                    Text(
-                        text = "Video",
-                        color = videoContentColor,
-                        fontSize = Sizes.FieldFontSize,
-                        fontWeight = if (isVideoSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-
-                // Audio option
-                val audioBg by animateColorAsState(
-                    if (isAudio) AppTheme.Accent.copy(0.15f) else if (isHoveredAudio) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
-                    animationSpec = tween(300)
-                )
-                val audioContentColor by animateColorAsState(
-                    if (isAudio) AppTheme.Accent else if (isHoveredAudio) AppTheme.Font1 else AppTheme.Font2,
-                    animationSpec = tween(300)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .clip(segmentShape)
-                        .background(audioBg, segmentShape)
-                        .clickable(
-                            interactionSource = interactionSourceAudio,
-                            indication = null
-                        ) { onModeChange(true) }
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        painter = painterResource("icons/tab_audio.svg"),
-                        contentDescription = "Audio",
-                        tint = audioContentColor,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(5.dp))
-                    Text(
-                        text = "Audio",
-                        color = audioContentColor,
-                        fontSize = Sizes.FieldFontSize,
-                        fontWeight = if (isAudio) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-            }
-        }
-    }
-}
-
-
 
 // Utils
 // ───────────────────────────────────────────────────────

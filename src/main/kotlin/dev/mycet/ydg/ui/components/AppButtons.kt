@@ -318,8 +318,11 @@ fun FieldText(
     onValueChange: (String) -> Unit,
     color: Color = AppTheme.Font1,
     maxLength: Int? = null,
+    leadingIcon : (@Composable () -> Unit)? = null, // para iconos a la izquierda del todo
+    trailingIcon : (@Composable () -> Unit)? = null, // para iconos a la derecha del todo
     outerContent: (@Composable () -> Unit)? = null,
-    innerContent: @Composable () -> Unit
+    innerContent: @Composable () -> Unit = {}
+
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -342,6 +345,13 @@ fun FieldText(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxSize().fieldPadding()
                 ) {
+
+                    if(leadingIcon != null) {
+                        leadingIcon()
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+
                     Box(
                         modifier = Modifier.fillMaxHeight().weight(1f),
                         contentAlignment = Alignment.CenterStart
@@ -356,6 +366,11 @@ fun FieldText(
                             )
                         } else
                             innerTextField()
+                    }
+
+                    if(trailingIcon != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        trailingIcon()
                     }
 
                     if (outerContent != null)
