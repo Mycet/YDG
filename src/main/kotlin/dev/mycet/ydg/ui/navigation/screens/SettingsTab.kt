@@ -361,7 +361,7 @@ fun SettingsFolder(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
     ) {
         SettingLabel(title = title, description = description, statusColor = statusColor)
 
@@ -405,7 +405,7 @@ fun SettingsFolder(
                             iconName = icon,
                             iconSize = 13.dp,
                             shape = Sizes.Round6,
-                            modifier = Modifier.size(Sizes.FieldHeightText)
+                            modifier = Modifier.size(Sizes.TextFieldHeight)
                         ) { onDownload() }
                     }
                 }
@@ -413,7 +413,7 @@ fun SettingsFolder(
                     iconName = "folder",
                     iconSize = 13.dp,
                     shape = Sizes.Round6,
-                    modifier = Modifier.size(Sizes.FieldHeightText)
+                    modifier = Modifier.size(Sizes.TextFieldHeight)
                 ) { onLocate() }
             }
         ) {
@@ -433,7 +433,7 @@ fun SettingText(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         // defaultMinSize permite que la fila crezca si hay 2 líneas de texto
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
     ) {
         SettingLabel(title = title, description = description)
 
@@ -470,7 +470,7 @@ fun SettingText(
 fun <T> SettingsDropdown(
     title: String,
     value: String, description: String = "",
-    modifier: Modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText),
+    modifier: Modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight),
     options: List<T>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -504,7 +504,7 @@ fun SettingsSwitch(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldHeightText)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
     ) {
         SettingLabel(title = title, description = description)
 

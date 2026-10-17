@@ -21,4 +21,5 @@ object AppTheme {
     val Green       = Color(0xff6FBF8E)
     val Yellow      = Color(0xffD9B26A)
     val Red         = Color(0xffE27D7D)
+
 }

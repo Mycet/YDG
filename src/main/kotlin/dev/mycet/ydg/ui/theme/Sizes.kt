@@ -14,8 +14,8 @@ object Sizes {
     val TitleWeight = FontWeight.SemiBold
 
     // Fields
-    val FieldHeightText = 26.dp
-    val FieldWidthText = 400.dp
+    val TextFieldHeight = 26.dp
+    val TextFieldWidth = 400.dp
     val FieldWidthDropdown = 200.dp
 
     // Shapes

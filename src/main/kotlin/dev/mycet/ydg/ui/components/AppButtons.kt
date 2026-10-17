@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
@@ -20,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
@@ -35,6 +38,7 @@ import dev.mycet.ydg.ui.theme.Sizes
 import dev.mycet.ydg.utils.fieldPadding
 import dev.mycet.ydg.utils.formatPathMiddle
 import dev.mycet.ydg.utils.toSVG
+import androidx.compose.ui.draw.clip
 
 data class BevelButtonColors(
     val border: Color,
@@ -213,7 +217,7 @@ fun <T> FieldDropdown(
     onSelect: (T) -> Unit,
     label: (T) -> AnnotatedString,
     modifier: Modifier = Modifier.width(200.dp),
-    height: Dp = Sizes.FieldHeightText
+    height: Dp = Sizes.TextFieldHeight
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -273,7 +277,7 @@ fun <T> FieldDropdown(
                             )
                         }
                     },
-                    modifier = Modifier.height(Sizes.FieldHeightText),
+                    modifier = Modifier.height(Sizes.TextFieldHeight),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     onClick = {
                         onSelect(option)
@@ -295,7 +299,7 @@ fun <T> FieldDropdown(
     onSelect: (T) -> Unit,
     label: (T) -> String,
     modifier: Modifier = Modifier.width(Sizes.FieldWidthDropdown),
-    height: Dp = Sizes.FieldHeightText
+    height: Dp = Sizes.TextFieldHeight
 ) = FieldDropdown(
     value = AnnotatedString(value),
     expanded = expanded,
@@ -309,7 +313,7 @@ fun <T> FieldDropdown(
 
 @Composable
 fun FieldText(
-    modifier: Modifier = Modifier.width(Sizes.FieldWidthText).height(Sizes.FieldHeightText),
+    modifier: Modifier = Modifier.width(Sizes.TextFieldWidth).height(Sizes.TextFieldHeight),
     value: String,
     onValueChange: (String) -> Unit,
     color: Color = AppTheme.Font1,
@@ -438,3 +442,113 @@ fun CollapsibleSection(
         }
     }
 }
+
+@Composable
+fun <T> MultiOptionSwitch(
+    options: List<T>,
+    selectedOption: T,
+    onOptionSelected: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    optionLabel: ((T) -> String)? = null,
+    optionIcon: (@Composable (T) -> Painter?)? = null,
+
+    containerColor: Color = AppTheme.Sunken,
+    borderColor: Color = AppTheme.Border,
+    thumbColor: Color = AppTheme.Accent.copy(alpha = 0.15f), //pintor austriaco type function
+    unselectedContentColor: Color = AppTheme.Font2,
+    selectedContentColor: Color = AppTheme.Accent,
+    optionPaddingHorizontal: Dp = 10.dp,
+    height: Dp = Sizes.TextFieldHeight,
+    shape: Shape = RoundedCornerShape(8.dp),
+    segmentShape: Shape = RoundedCornerShape(6.dp)
+) {
+    Box(
+        modifier = modifier
+            .height(height)
+            .background(borderColor, shape)
+            .padding(1.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .background(containerColor, shape)
+                .padding(2.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxHeight(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                options.forEach { option ->
+                    val isSelected = option == selectedOption
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isHovered by interactionSource.collectIsHoveredAsState()
+
+                    //
+                    val bgColor by animateColorAsState(
+                        targetValue = when {
+                            isSelected -> thumbColor
+                            isHovered -> AppTheme.SurfaceHigh.copy(alpha = 0.5f)
+                            else -> Color.Transparent
+                        },
+                        animationSpec = tween(300),
+                        label = "SwitchBgColor"
+                    )
+
+                    //
+                    val contentColor by animateColorAsState(
+                        targetValue = when {
+                            isSelected -> selectedContentColor
+                            isHovered -> AppTheme.Font1
+                            else -> unselectedContentColor
+                        },
+                        animationSpec = tween(300),
+                        label = "SwitchContentColor"
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .clip(segmentShape)
+                            .background(bgColor, segmentShape)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                if (!isSelected) onOptionSelected(option)
+                            }
+                            .padding(horizontal = optionPaddingHorizontal),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        val painter = optionIcon?.invoke(option)
+                        val labelText = optionLabel?.invoke(option)
+
+                        if (painter != null) {
+                            Icon(
+                                painter = painter,
+                                contentDescription = labelText,
+                                tint = contentColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+
+                        if (painter != null && !labelText.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.width(5.dp))
+                        }
+
+                        if (!labelText.isNullOrEmpty()) {
+                            Text(
+                                text = labelText,
+                                color = contentColor,
+                                fontSize = Sizes.FieldFontSize, // Fuente exacta de tu código
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -56,6 +56,8 @@ data class MediaOptions(
     val sponsorBlock: Boolean = Prefs.sponsorBlock
 )
 
+enum class MediaType {VIDEO, AUDIO};
+
 @Composable
 fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownload: (String) -> DownloadTask) {
     val focusManager = LocalFocusManager.current
@@ -157,14 +159,14 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
-                .height(Sizes.FieldHeightText) // ancho fijo para todos los elementos de la fila
+                .height(Sizes.TextFieldHeight) // ancho fijo para todos los elementos de la fila
                 .padding(horizontal = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             FieldText(
                 modifier = Modifier
                     .weight(1f)
-                    .height(Sizes.FieldHeightText),
+                    .height(Sizes.TextFieldHeight),
                 value = url,
                 onValueChange = { url = it },
             ) {
@@ -177,12 +179,25 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                 }
             }
 
-            VideoAudioToggle(
-                isAudio = isAudio,
-                onModeChange = { newMode ->
+            MultiOptionSwitch(
+                options = MediaType.entries,
+                selectedOption = if (isAudio) MediaType.AUDIO else MediaType.VIDEO,
+                onOptionSelected = { newType ->
                     expandedExt = false
                     expandedQuality = false
-                    isAudio = newMode
+                    isAudio = (newType == MediaType.AUDIO)
+                },
+                optionLabel = { type ->
+                    when (type) {
+                        MediaType.VIDEO -> "Video"
+                        MediaType.AUDIO -> "Audio"
+                    }
+                },
+                optionIcon = { type ->
+                    when (type) {
+                        MediaType.VIDEO -> painterResource("icons/tab_play.svg")
+                        MediaType.AUDIO -> painterResource("icons/tab_audio.svg")
+                    }
                 }
             )
         }
@@ -556,7 +571,7 @@ private fun MediaDetailsPanel(
                             iconName = "folder",
                             iconSize = 13.dp,
                             shape = Sizes.Round6,
-                            modifier = Modifier.size(Sizes.FieldHeightText)
+                            modifier = Modifier.size(Sizes.TextFieldHeight)
                         ) {
                             NativeFolderPicker.pickFolder(
                                 title = "Set downloads destination folder: ",
@@ -706,7 +721,7 @@ fun VideoAudioToggle(
 
     Box(
         modifier = modifier
-            .height(Sizes.FieldHeightText)
+            .height(Sizes.TextFieldHeight)
             .background(AppTheme.Border, shape)
             .padding(1.dp)
     ) {
@@ -814,7 +829,7 @@ private fun PropertyRow(
     if (topSpacer) Spacer(modifier = Modifier.height(14.dp))
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Sizes.FieldHeightText),
+        modifier = Modifier.fillMaxWidth().height(Sizes.TextFieldHeight),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(

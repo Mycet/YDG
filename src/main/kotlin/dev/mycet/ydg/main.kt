@@ -32,13 +32,14 @@ fun main() {
         var isSidebarExpanded by remember { mutableStateOf(Prefs.isSidebarExpanded) }
         var isMaximized by remember { mutableStateOf(false) }
         var normalBounds by remember { mutableStateOf<Rectangle?>(null) }
-
+    //  var appIcon = painterResource("icons/webada.png")
         Window(
             onCloseRequest = ::exitApplication,
             title = "YDG v0.1.0",
             state = windowState,
             undecorated = true,
             resizable = !isMaximized
+            // icon = appIcon
         ) {
             window.minimumSize = Dimension(1280, 720)
             window.background = java.awt.Color(0x1C, 0x1C, 0x1C)
