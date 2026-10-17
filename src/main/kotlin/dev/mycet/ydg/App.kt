@@ -4,6 +4,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.foundation.ScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,6 +35,7 @@ import dev.mycet.ydg.ui.navigation.TabBar
 import dev.mycet.ydg.ui.navigation.screens.MediaTab
 import dev.mycet.ydg.ui.navigation.screens.SettingsTab
 import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.ui.theme.Sizes
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
@@ -67,8 +70,21 @@ fun App(isSidebarExpanded: Boolean = false) {
             backgroundColor = AppTheme.Accent.copy(alpha = 0.35f) // fondo
         )
     }
+    val appScrollbarStyle = ScrollbarStyle(
+        minimalHeight = 4.dp,
+        thickness = 6.dp,
+        shape = Sizes.Round8,
+        hoverDurationMillis = 200,
+        unhoverColor = AppTheme.Border,
+        hoverColor = AppTheme.BorderHover
+//        unhoverColor = AppTheme.BorderHover.copy(alpha = 0.8f),
+//        hoverColor = AppTheme.Accent
+    )
 
-    CompositionLocalProvider(LocalTextSelectionColors provides customTextSelectionColors) {
+    CompositionLocalProvider(
+        LocalTextSelectionColors provides customTextSelectionColors,
+        LocalScrollbarStyle provides appScrollbarStyle,
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
@@ -198,23 +214,38 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                                 val statusStr = when {
                                     task.hasError -> "Error"
                                     task.isDone -> "Done"
+                                    task.statusPhase.isNotEmpty() -> task.statusPhase
                                     else -> "${(task.progress * 100).toInt()}%"
                                 }
-                                Text(text = statusStr, color = AppTheme.Font2, fontSize = 10.sp)
+                                Text(
+                                    text = statusStr,
+                                    color = if (task.hasError) AppTheme.Red else AppTheme.Font2,
+                                    fontSize = Sizes.TooltipFont
+                                )
 
-                                if (task.sizeText.isNotEmpty()) {
-                                    if (task.isDone)
+                                if (task.isDone) {
+                                    if (task.sizeText.isNotEmpty()) {
+                                        val finalSize = task.sizeText.substringAfter("/ ").ifEmpty { task.sizeText }
                                         Text(
-                                            text = "Final: ~${task.sizeText}",
+                                            text = "Final: ~${finalSize}",
                                             color = AppTheme.Font2,
-                                            fontSize = 10.sp
+                                            fontSize = Sizes.TooltipFont
                                         )
-                                    else
+                                    }
+                                } else {
+                                    val details = buildList {
+                                        if (task.sizeText.isNotEmpty()) add(task.sizeText)
+                                        if (task.speed.isNotEmpty()) add(task.speed)
+                                        if (task.eta.isNotEmpty()) add("ETA: ${task.eta}")
+                                    }.joinToString(" · ")
+                                    if (details.isNotEmpty()) {
                                         Text(
-                                            text = "${task.sizeText} - ${task.speed}",
+                                            text = details,
                                             color = AppTheme.Font2,
-                                            fontSize = 10.sp
+                                            fontSize = Sizes.TooltipFont,
+                                            maxLines = 1
                                         )
+                                    }
                                 }
                             }
 

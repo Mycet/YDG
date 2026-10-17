@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
+import dev.mycet.ydg.utils.fieldPadding
 import dev.mycet.ydg.utils.formatPathMiddle
 import dev.mycet.ydg.utils.toSVG
 
@@ -63,7 +64,7 @@ object BevelButtonDefaults {
 
     @Composable
     fun font(
-        fontSize: TextUnit = Sizes.TextFieldFont,
+        fontSize: TextUnit = Sizes.FieldFontSize,
         fontWeight: FontWeight = FontWeight.Normal
     ) = BevelButtonFont(
         fontSize = fontSize, fontWeight = fontWeight
@@ -237,7 +238,7 @@ fun <T> FieldDropdown(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
             ) {
-                Text(text = value, color = AppTheme.Font1, fontSize = Sizes.TextFieldFont, modifier = Modifier.weight(1f))
+                Text(text = value, color = AppTheme.Font1, fontSize = Sizes.FieldFontSize, modifier = Modifier.weight(1f))
 
                 CompositionLocalProvider(LocalContentColor provides if (expanded) AppTheme.Accent else AppTheme.Border) {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
@@ -259,7 +260,7 @@ fun <T> FieldDropdown(
                         Text(
                             label(option),
                             color = AppTheme.Font1,
-                            fontSize = Sizes.TextFieldFont
+                            fontSize = Sizes.FieldFontSize
                         )
                     },
                     trailingIcon = {
@@ -310,8 +311,9 @@ fun <T> FieldDropdown(
 fun FieldText(
     modifier: Modifier = Modifier.width(Sizes.FieldWidthText).height(Sizes.FieldHeightText),
     value: String,
-    color: Color = AppTheme.Font1,
     onValueChange: (String) -> Unit,
+    color: Color = AppTheme.Font1,
+    maxLength: Int? = null,
     outerContent: (@Composable () -> Unit)? = null,
     innerContent: @Composable () -> Unit
 ) {
@@ -334,7 +336,7 @@ fun FieldText(
             decorationBox = { innerTextField ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
+                    modifier = Modifier.fillMaxSize().fieldPadding()
                 ) {
                     Box(
                         modifier = Modifier.fillMaxHeight().weight(1f),
@@ -343,9 +345,9 @@ fun FieldText(
                         innerContent()
                         if (!isFocused && value.isNotEmpty()) {
                             Text(
-                                text = value.formatPathMiddle(36),
+                                text = if (maxLength == null) value else value.formatPathMiddle(maxLength),
                                 color = color,
-                                fontSize = Sizes.TextFieldFont,
+                                fontSize = Sizes.FieldFontSize,
                                 maxLines = 1
                             )
                         } else

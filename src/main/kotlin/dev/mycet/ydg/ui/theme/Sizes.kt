@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.sp
 object Sizes {
     // Font
     val TooltipFont = 12.sp
-    val TextFieldFont = 14.sp
+    val FieldFontSize = 14.sp
     val TitleFont = 18.sp
 
     val TitleWeight = FontWeight.SemiBold

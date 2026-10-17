@@ -1,8 +1,9 @@
-package dev.mycet.ydg.downloader
+package dev.mycet.ydg.core
 
 import dev.mycet.ydg.data.models.VideoDetails
 import dev.mycet.ydg.data.models.VideoInfo
 import dev.mycet.ydg.data.prefs.Prefs
+import dev.mycet.ydg.ui.navigation.screens.MediaOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
@@ -22,7 +23,7 @@ object CommandManager {
     }
 
     // 'suspend' es parecido a 'new Thread', es para que no congele el programa
-    private suspend fun ejecutar(comando: List<String>, onProgress: (String) -> Unit) {
+    private suspend fun execute(comando: List<String>, onProgress: (String) -> Unit) {
         // withContext hace que ejecute en otro thread en lugar del Main
         // IO para operaciones bloqueantes (leer archivos, procesos, red)
         // Swing para cambios de estado de Compose, cosas que modifiquen la UI
@@ -35,7 +36,7 @@ object CommandManager {
                 val reader = proceso.inputStream.bufferedReader()
                 var linea = reader.readLine()
                 while (linea != null) {
-                    println(linea)
+                    println("[yt-dlp]: $linea") // <- Esto saldrá en la consola de IntelliJ
                     withContext(Dispatchers.Swing) {
                         onProgress(linea)
                     }
@@ -44,6 +45,7 @@ object CommandManager {
 
                 proceso.waitFor()
             } catch (ex: Exception) {
+                ex.printStackTrace()
                 withContext(Dispatchers.Swing) {
                     // ${ } o $ es para insertar variables o resultados de funciones u operaciones
                     // Se usa ${} para lo segundo, o para variables cuando es ambiguo y puede confundirse con el texto
@@ -58,27 +60,24 @@ object CommandManager {
 
     suspend fun downloadVideo(
         url: String,
-        title: String,
+        options: MediaOptions,
         formatId: String,
         extension: String,
         onProgress: (String) -> Unit
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar tras crear
-            val safeTitle = title.replace("\"", "'").replace(Regex("[\\\\/:*?<>|]"), "_")
-            val outputTitle = safeTitle.ifEmpty { "%(title)s" }
-            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
             addAll(listOf("--format", "$formatId+bestaudio/best"))
             addAll(listOf("--merge-output-format", extension.lowercase().trim()))
-            addCommonMediaArgs(url, this)
+            addCommonMediaArgs(url, options, this)
         }
 
-        ejecutar(comando, onProgress);
+        execute(comando, onProgress);
     }
 
     suspend fun downloadAudio(
         url: String,
-        title: String,
+        options: MediaOptions,
         format: String,
         formatId: String,
         bitrate: Int,
@@ -86,36 +85,55 @@ object CommandManager {
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
-            val safeTitle = title.replace("\"", "'").replace(Regex("[\\\\/:*?<>|]"), "_")
-            val outputTitle = safeTitle.ifEmpty { "%(title)s" }
-            addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
             addAll(listOf("--format", formatId))
             addAll(listOf("--extract-audio", "--audio-format", format.lowercase()))
             addAll(listOf("--audio-quality", "${bitrate}K"))
-            addCommonMediaArgs(url, this)
+            addCommonMediaArgs(url, options, this)
         }
 
-        ejecutar(comando, onProgress);
+        execute(comando, onProgress);
     }
 
-    fun addCommonMediaArgs(url: String, cmd: MutableList<String>) {
+    fun addCommonMediaArgs(url: String, options: MediaOptions, cmd: MutableList<String>) {
+        val safeTitle = options.title.replace("\"", "'").replace(Regex("[\\\\/:*?<>|]"), "_")
+        val outputTitle = safeTitle.ifEmpty { "%(title)s" }
+        cmd.addAll(listOf("--output", "${Prefs.downloadFolder}${File.separator}$outputTitle.%(ext)s"))
+
         cmd.addAll(listOf("--ffmpeg-location", Prefs.ffmpegFolder))
 
         if (Prefs.browserForCookies.isNotBlank())
             cmd.addAll(listOf("--cookies-from-browser", Prefs.browserForCookies.trim().lowercase()))
 
-        val denoExe = "${Prefs.ffmpegFolder}${File.separator}deno.exe"
-        if (File(denoExe).exists())
-            cmd.addAll(listOf("--js-runtimes", denoExe))
+        if (File("${Prefs.ffmpegFolder}${File.separator}deno.exe").exists())
+            cmd.addAll(listOf("--js-runtimes", "deno"))
 
-        cmd.add("--add-metadata")
-        cmd.add("--embed-thumbnail")
+        if (options.addMetadata) {
+            cmd.add("--add-metadata")
+            if (options.title.isNotBlank()) {
+                val cleanTitle = options.title.replace("\"", "'")
+                cmd.addAll(listOf("--parse-metadata", "$cleanTitle:%(title)s"))
+            }
+            if (options.author.isNotBlank()) {
+                val cleanAuthor = options.author.replace("\"", "'")
+                cmd.addAll(listOf("--parse-metadata", "$cleanAuthor:%(artist)s"))
+                cmd.addAll(listOf("--parse-metadata", "$cleanAuthor:%(uploader)s"))
+            }
+            if (options.album.isNotBlank()) {
+                val cleanAlbum = options.album.replace("\"", "'")
+                cmd.addAll(listOf("--parse-metadata", "$cleanAlbum:%(album)s"))
+            }
+        }
+
+        if (options.embedThumbnail) cmd.add("--embed-thumbnail")
+        if (options.embedSubs) cmd.add("--embed-subs")
+        if (options.sponsorBlock) cmd.addAll(listOf("--sponsorblock-remove", "all"))
+
         cmd.add(url)
     }
 
     suspend fun updateYtDlp(onProgress: (String) -> Unit) {
         val comando = mutableListOf(ytDlpPath(), "-U")
-        ejecutar(comando, onProgress)
+        execute(comando, onProgress)
     }
 
     suspend fun fetchVideoInfo(

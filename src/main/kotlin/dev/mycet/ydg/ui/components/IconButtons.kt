@@ -131,7 +131,7 @@ fun NavigationIcon(
                 painter = painterResource(path),
                 modifier = Modifier.size(iconSize),
                 contentDescription = label ?: "",
-                tint = if (isSelected) AppTheme.Font1 else AppTheme.Font2,
+                tint = if (isSelected) AppTheme.Accent else AppTheme.Font2,
             )
         }
 
@@ -143,7 +143,7 @@ fun NavigationIcon(
             ) {
                 Text(
                     text = label,
-                    color = if (isSelected) AppTheme.Font1 else AppTheme.Font2,
+                    color = if (isSelected) AppTheme.Accent else AppTheme.Font2,
                     fontSize = 13.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                     maxLines = 1,

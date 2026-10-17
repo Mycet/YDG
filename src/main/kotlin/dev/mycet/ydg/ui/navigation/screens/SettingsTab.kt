@@ -18,17 +18,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.mycet.ydg.core.CommandManager
 import dev.mycet.ydg.core.Dependencies
 import dev.mycet.ydg.core.DependencyState
 import dev.mycet.ydg.core.DependencyStatus
 import dev.mycet.ydg.data.models.SimpleTask
 import dev.mycet.ydg.data.prefs.Prefs
-import dev.mycet.ydg.downloader.CommandManager
 import dev.mycet.ydg.ui.components.*
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
-import dev.mycet.ydg.utils.inputFieldSize
-import dev.mycet.ydg.utils.inputFieldStyle
+import dev.mycet.ydg.utils.fieldStyle
+import dev.mycet.ydg.utils.fieldTextSize
 import dev.mycet.ydg.utils.titleCase
 import javafx.application.Platform
 import javafx.stage.DirectoryChooser
@@ -309,7 +309,7 @@ fun RowScope.SettingLabel(
         Text(
             text = title,
             color = AppTheme.Font1,
-            fontSize = Sizes.TextFieldFont
+            fontSize = Sizes.FieldFontSize
         )
         if (description.isNotBlank()) {
             Row (
@@ -327,7 +327,7 @@ fun RowScope.SettingLabel(
                 Text(
                     text = description,
                     color = AppTheme.Font2,
-                    fontSize = Sizes.TextFieldFont
+                    fontSize = Sizes.FieldFontSize
                 )
             }
         }
@@ -369,6 +369,7 @@ fun SettingsFolder(
             value = value,
             onValueChange = onValueChange,
             color = AppTheme.Font2,
+            maxLength = 36,
             outerContent = {
                 if (onDownload != null) {
                     val tooltip = downloadState?.let {
@@ -392,7 +393,7 @@ fun SettingsFolder(
                     TooltipArea(
                         tooltip = {
                             Box(
-                                modifier = Modifier.inputFieldStyle().padding(8.dp)
+                                modifier = Modifier.fieldStyle().padding(8.dp)
                             ) {
                                 Text(tooltip, color = AppTheme.Font1, fontSize = 13.sp)
                             }
@@ -440,7 +441,7 @@ fun SettingText(
 
         BevelContainer(
             border = if (isFocused) AppTheme.Accent else AppTheme.Border,
-            modifier = Modifier.inputFieldSize()
+            modifier = Modifier.fieldTextSize()
         ) {
             BasicTextField(
                 value = value,
@@ -448,7 +449,7 @@ fun SettingText(
                 textStyle = TextStyle(color = AppTheme.Font1, fontSize = 13.sp),
                 cursorBrush = SolidColor(AppTheme.Font1),
                 singleLine = true,
-                modifier = Modifier.inputFieldSize().inputFieldStyle(),
+                modifier = Modifier.fieldTextSize().fieldStyle(),
                 decorationBox = { innerTextField ->
                     Box(
                         contentAlignment = Alignment.CenterStart,

@@ -1,7 +1,7 @@
 package dev.mycet.ydg.ui.navigation.screens
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -11,9 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Icon
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,31 +20,42 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.*
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.mycet.ydg.core.CommandManager
 import dev.mycet.ydg.data.models.*
-import dev.mycet.ydg.downloader.CommandManager
+import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.ui.components.*
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import dev.mycet.ydg.utils.fieldDropdownSize
+import dev.mycet.ydg.utils.fieldPadding
+import dev.mycet.ydg.utils.fieldStyle
+import kotlinx.coroutines.*
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
+data class MediaOptions(
+    val title: String = "",
+    val author: String = "",
+    val album: String = "",
+    val addMetadata: Boolean = Prefs.addMetadata,
+    val embedThumbnail: Boolean = Prefs.embedThumbnail,
+    val embedSubs: Boolean = Prefs.embedSubs,
+    val sponsorBlock: Boolean = Prefs.sponsorBlock
+)
+
 @Composable
 fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownload: (String) -> DownloadTask) {
     val focusManager = LocalFocusManager.current
@@ -55,13 +64,14 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
     var url by remember { mutableStateOf("") }
     var previewItems by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
     var isLoadingList by remember { mutableStateOf(false) }
-    var detailsLoadedForId by remember { mutableStateOf("") }
+    var loadedVideoId by remember { mutableStateOf("") }
     val detailsCache = remember { mutableStateMapOf<String, VideoDetails>() }
 
-    // Playlist
+    // Selected Media
     var details by remember { mutableStateOf<VideoDetails?>(null) }
     var isLoadingDetails by remember { mutableStateOf(false) }
-    var editedTitle by remember { mutableStateOf("") }
+    var loadDetailsJob by remember { mutableStateOf<Job?>(null) }
+    var options by remember { mutableStateOf(MediaOptions()) }
     var selectedVideoExt by remember { mutableStateOf("") }
     var selectedVideoQuality by remember { mutableStateOf<VideoFormat?>(null) }
     var selectedAudioExt by remember { mutableStateOf("") }
@@ -72,10 +82,15 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
 
     // Es como una función dentro del compose, tiene acceso a las variables del compose y permite simplificar código que se repite
     val updateDetailsState = { newDetails: VideoDetails ->
+        val isSameVideo = newDetails.id == loadedVideoId
         detailsCache[newDetails.id] = newDetails
         details = newDetails
-        detailsLoadedForId = newDetails.id
-        editedTitle = newDetails.title
+        loadedVideoId = newDetails.id
+        options = options.copy(
+            title = if (isSameVideo && options.title.isNotEmpty()) options.title else newDetails.title,
+            author = if (isSameVideo && options.author.isNotEmpty()) options.author else newDetails.displayAuthor,
+            album = if (isSameVideo && options.album.isNotEmpty()) options.album else newDetails.album
+        )
         selectedVideoExt = getSelectedExtension(false, newDetails)
         selectedVideoQuality = getSelectedFormat(false, newDetails, selectedVideoExt)
         selectedAudioExt = getSelectedExtension(true, newDetails)
@@ -85,6 +100,8 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
     LaunchedEffect(url) {
         previewItems = emptyList()
         details = null
+        loadedVideoId = ""
+        options = options.copy(title = "", author = "", album = "")
         if (url.startsWith("http")) {
             isLoadingList = true
             delay(800.milliseconds)
@@ -141,7 +158,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
                 .height(Sizes.FieldHeightText) // ancho fijo para todos los elementos de la fila
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             FieldText(
@@ -155,7 +172,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                     Text(
                         "Insert link here",
                         color = AppTheme.Font2,
-                        fontSize = Sizes.TextFieldFont
+                        fontSize = Sizes.FieldFontSize
                     )
                 }
             }
@@ -181,14 +198,14 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                 ) {
                     focusManager.clearFocus()
                 }
-                .padding(2.dp)
+                .padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
             when {
                 isLoadingList -> {
                     Text(
                         text = "Loading...",
                         color = AppTheme.Font2,
-                        fontSize = Sizes.TextFieldFont,
+                        fontSize = Sizes.FieldFontSize,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -197,7 +214,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                     Text(
                         text = "No results",
                         color = AppTheme.Font2,
-                        fontSize = Sizes.TextFieldFont,
+                        fontSize = Sizes.FieldFontSize,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -205,6 +222,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                 previewItems.isNotEmpty() || details != null -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Details - Preview con animación fade-in
+                        // ————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
                         details?.let { nonNullDetails ->
                             AnimatedContent(
                                 targetState = isAudio,
@@ -222,8 +240,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                                     modifier = Modifier.fillMaxSize().padding(8.dp),
                                     details = nonNullDetails,
                                     isAudio = currentIsAudio,
-                                    editedTitle = editedTitle,
-                                    onTitleChange = { editedTitle = it },
+                                    options = options, onOptionsChange = { options = it },
                                     selectedExt = currentExt,
                                     onExtChange = { newExt ->
                                         if (currentIsAudio) {
@@ -249,13 +266,13 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                                     isLoadingDetails = isLoadingDetails,
                                     duration = nonNullDetails.duration.roundToInt(),
                                 ) {
-                                    val task = onNewDownload(editedTitle)
+                                    val task = onNewDownload(options.title)
                                     scope.launch {
                                         if (currentIsAudio) {
                                             val fmt = selectedAudioQuality ?: return@launch
                                             CommandManager.downloadAudio(
                                                 url = nonNullDetails.url,
-                                                title = editedTitle,
+                                                options = options,
                                                 formatId = fmt.formatId,
                                                 format = selectedAudioExt,
                                                 bitrate = fmt.audioBitrate?.toInt() ?: 128,
@@ -265,7 +282,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                                             val fmt = selectedVideoQuality ?: return@launch
                                             CommandManager.downloadVideo(
                                                 url = nonNullDetails.url,
-                                                title = editedTitle,
+                                                options = options,
                                                 formatId = fmt.formatId,
                                                 extension = fmt.extension,
                                                 onProgress = { line -> task.updateFromLog(line) }
@@ -278,137 +295,38 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                         }
 
                         // Playlist
+                        // ————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
                         if (previewItems.size > 1)
                             MediaPlaylist(
                                 previewItems = previewItems,
-                                selectedVideoId = details?.id ?: detailsLoadedForId,
+                                selectedVideoId = details?.id ?: loadedVideoId,
                                 url = url,
                                 scope = scope
                             ) { video ->
-                                scope.launch {
-                                    var cached = detailsCache[video.id]
-                                    if (cached == null) {
-                                        isLoadingDetails = true
-                                        details = null
-                                        cached = CommandManager.fetchVideoDetails(video.url.ifEmpty { url })
-                                    }
-                                    cached?.let { updateDetailsState(it) }
+                                loadDetailsJob?.cancel()
+
+                                loadedVideoId = video.id
+                                details = video.toVideoDetails(url)
+                                options = options.copy(title = video.title, author = video.displayAuthor, album = video.album)
+                                selectedVideoExt = ""
+                                selectedVideoQuality = null
+                                selectedAudioExt = ""
+                                selectedAudioQuality = null
+
+                                val cached = detailsCache[video.id]
+                                if (cached != null) {
+                                    updateDetailsState(cached)
                                     isLoadingDetails = false
+                                } else {
+                                    isLoadingDetails = true
+                                    loadDetailsJob = scope.launch {
+                                        val fetched = CommandManager.fetchVideoDetails(video.url.ifEmpty { url })
+                                        fetched?.let { updateDetailsState(it) }
+                                        isLoadingDetails = false
+                                    }
                                 }
                             }
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun VideoAudioToggle(
-    isAudio: Boolean,
-    onModeChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val interactionSourceVideo = remember { MutableInteractionSource() }
-    val isHoveredVideo by interactionSourceVideo.collectIsHoveredAsState()
-
-    val interactionSourceAudio = remember { MutableInteractionSource() }
-    val isHoveredAudio by interactionSourceAudio.collectIsHoveredAsState()
-
-    val shape = RoundedCornerShape(8.dp)
-    val segmentShape = RoundedCornerShape(6.dp)
-
-    Box(
-        modifier = modifier
-            .height(Sizes.FieldHeightText)
-            .background(AppTheme.Border, shape)
-            .padding(1.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .background(AppTheme.Sunken, shape)
-                .padding(2.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxHeight(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Video option
-                val isVideoSelected = !isAudio
-                val videoBg by animateColorAsState(
-                    if (isVideoSelected) AppTheme.Accent else if (isHoveredVideo) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
-                    animationSpec = tween(300)
-                )
-                val videoContentColor by animateColorAsState(
-                    if (isVideoSelected) AppTheme.OnAccent else if (isHoveredVideo) AppTheme.Font1 else AppTheme.Font2,
-                    animationSpec = tween(300)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .clip(segmentShape)
-                        .background(videoBg, segmentShape)
-                        .clickable(
-                            interactionSource = interactionSourceVideo,
-                            indication = null
-                        ) { onModeChange(false) }
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        painter = painterResource("icons/tab_play.svg"),
-                        contentDescription = "Video",
-                        tint = videoContentColor,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(Modifier.width(5.dp))
-                    Text(
-                        text = "Video",
-                        color = videoContentColor,
-                        fontSize = 12.sp,
-                        fontWeight = if (isVideoSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-
-                // Audio option
-                val audioBg by animateColorAsState(
-                    if (isAudio) AppTheme.Accent else if (isHoveredAudio) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
-                    animationSpec = tween(300)
-                )
-                val audioContentColor by animateColorAsState(
-                    if (isAudio) AppTheme.OnAccent else if (isHoveredAudio) AppTheme.Font1 else AppTheme.Font2,
-                    animationSpec = tween(300)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .clip(segmentShape)
-                        .background(audioBg, segmentShape)
-                        .clickable(
-                            interactionSource = interactionSourceAudio,
-                            indication = null
-                        ) { onModeChange(true) }
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        painter = painterResource("icons/tab_audio.svg"),
-                        contentDescription = "Audio",
-                        tint = audioContentColor,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(Modifier.width(5.dp))
-                    Text(
-                        text = "Audio",
-                        color = audioContentColor,
-                        fontSize = 12.sp,
-                        fontWeight = if (isAudio) FontWeight.SemiBold else FontWeight.Normal,
-                    )
                 }
             }
         }
@@ -420,7 +338,7 @@ private fun MediaDetailsPanel(
     modifier: Modifier = Modifier,
     details: VideoDetails,
     isAudio: Boolean,
-    editedTitle: String, onTitleChange: (String) -> Unit,                   // title
+    options: MediaOptions, onOptionsChange: (MediaOptions) -> Unit,
     selectedExt: String, onExtChange: (String) -> Unit,                     // extension
     selectedQuality: VideoFormat?, onQualityChange: (VideoFormat) -> Unit,  // quality - format
     expandedExt: Boolean, onExpandedExtChange: (Boolean) -> Unit,           // (dropdown) extension
@@ -429,15 +347,28 @@ private fun MediaDetailsPanel(
     duration: Int,
     onDownload: () -> Unit
 ) {
+    var destination by remember { mutableStateOf(Prefs.downloadFolder) }
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        val infiniteTransition = rememberInfiniteTransition(label = "ThumbnailPulse")
+        val pulseAlpha by infiniteTransition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(700),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "PulseAlpha"
+        )
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            val thumbnail = rememberThumbnail(details.thumbnail ?: "")
+            val thumbnail = rememberThumbnail(details.thumbnail)
 
             Box(
                 contentAlignment = Alignment.Center,
@@ -471,14 +402,13 @@ private fun MediaDetailsPanel(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
                         )
-                    }
-
-                    if (isLoadingDetails) {
-                        Text(
-                            text = "Loading...",
-                            color = AppTheme.Font2,
-                            fontSize = Sizes.TextFieldFont,
-                            modifier = Modifier.align(Alignment.Center)
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .alpha(pulseAlpha)
+                                .background(AppTheme.SurfaceHigh)
+                                .border(1.dp, AppTheme.Border, Sizes.Round12)
                         )
                     }
                 }
@@ -495,16 +425,27 @@ private fun MediaDetailsPanel(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (!isLoadingDetails)
-                BevelButton(
-                    text = "Download",
-//                    icon = "download-2",
-                    colors = BevelButtonDefaults.colors(
+            BevelButton(
+                text = if (isLoadingDetails) "Loading..." else "Download",
+                colors = if (isLoadingDetails) {
+                    BevelButtonDefaults.colors(
+                        border = AppTheme.Border,
+                        borderHover = AppTheme.Border,
+                        fill = AppTheme.Sunken,
+                        fillHover = AppTheme.Sunken,
+                        textColor = AppTheme.Font2,
+                        textColorHover = AppTheme.Font2
+                    )
+                } else {
+                    BevelButtonDefaults.colors(
                         fillHover = AppTheme.SurfaceHigh.copy(alpha = 0.35f)
-                    ),
-                    font = BevelButtonDefaults.font(fontWeight = FontWeight.Medium),
-                    onClick = onDownload
-                )
+                    )
+                },
+                font = BevelButtonDefaults.font(fontWeight = FontWeight.Medium),
+                onClick = {
+                    if (!isLoadingDetails) onDownload()
+                }
+            )
         }
 
         // Propiedades
@@ -512,46 +453,61 @@ private fun MediaDetailsPanel(
             modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Título editable
-            PropRow(label = "Title") {
-                var isFocused by remember { mutableStateOf(false) }
-
-                BevelContainer(
-                    border = if (isFocused) AppTheme.Accent else AppTheme.Border,
-                    modifier = Modifier
-                        .width(Sizes.FieldWidthText)
-                        .height(Sizes.FieldHeightText)
-                ) {
-                    BasicTextField(
-                        value = editedTitle,
-                        onValueChange = onTitleChange,
-                        textStyle = TextStyle(
-                            color = AppTheme.Font1,
-                        ),
-                        cursorBrush = SolidColor(AppTheme.Font1),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxSize().onFocusChanged { isFocused = it.isFocused},
-                        decorationBox = { innerTextField ->
-                            Box(
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) { innerTextField() }
-                        }
-                    )
+            PropertyRow(label = "Title") {
+                FieldText(
+                    value = options.title,
+                    onValueChange = { onOptionsChange(options.copy(title = it)) },
+                ) {}
+            }
+            PropertyRow(label = "Author") {
+                FieldText(
+                    value = options.author,
+                    onValueChange = { onOptionsChange(options.copy(author = it)) },
+                ) {}
+            }
+            PropertyRow(label = "Album", bottomSpacer = true) {
+                if (isLoadingDetails && options.album.isEmpty()) {
+                    Box(modifier = Modifier.fieldDropdownSize(width = 400.dp).fieldStyle(),
+                        contentAlignment = Alignment.CenterStart) {
+                        Box(
+                            modifier = Modifier.fieldPadding()
+                                .size(120.dp, 10.dp)
+                                .alpha(pulseAlpha)
+                                .background(AppTheme.SurfaceHigh, Sizes.Round4)
+                                .border(1.dp, AppTheme.Border, Sizes.Round4),
+                        )
+                    }
+                } else {
+                    FieldText(
+                        value = options.album,
+                        onValueChange = { onOptionsChange(options.copy(album = it)) },
+                    ) {}
                 }
             }
 
             // Dropdown formato (extensions)
             val extensions = if (isAudio) details.audioExtensions else details.videoExtensions
-            PropRow(label = "Format") {
-                FieldDropdown(
-                    value = selectedExt.uppercase(),
-                    expanded = expandedExt,
-                    onExpandedChange = onExpandedExtChange,
-                    options = extensions,
-                    onSelect = onExtChange,
-                    label = { it.uppercase() }
-                )
+            PropertyRow(label = "Format") {
+                if (isLoadingDetails && selectedExt.isEmpty())
+                    Box(modifier = Modifier.fieldDropdownSize().fieldStyle().fieldStyle(),
+                        contentAlignment = Alignment.CenterStart) {
+                        Box(
+                            modifier = Modifier.fieldPadding()
+                                .size(60.dp, 10.dp)
+                                .alpha(pulseAlpha)
+                                .background(AppTheme.SurfaceHigh, Sizes.Round4)
+                                .border(1.dp, AppTheme.Border, Sizes.Round4),
+                        )
+                    }
+                else
+                    FieldDropdown(
+                        value = selectedExt.uppercase(),
+                        expanded = expandedExt,
+                        onExpandedChange = onExpandedExtChange,
+                        options = extensions,
+                        onSelect = onExtChange,
+                        label = { it.uppercase() }
+                    )
             }
 
             // Dropdown quality-format
@@ -563,19 +519,59 @@ private fun MediaDetailsPanel(
                     append(quality)
                     append("    ")
                     withStyle(SpanStyle(color = AppTheme.Font2)) {
-                        append(format.displaySize)
+                        append(format.totalDisplaySize(if (isAudio) 0L else details.bestAudioSize))
                     }
                 }
             }
-            PropRow(label = "Quality") {
-                FieldDropdown(
-                    value = selectedQuality?.let { formatLabel(it) } ?: AnnotatedString(""),
-                    expanded = expandedQuality,
-                    onExpandedChange = onExpandedQualityChange,
-                    options = qualityOptions,
-                    onSelect = onQualityChange,
-                    label = formatLabel
-                )
+            PropertyRow(label = "Quality", bottomSpacer = true) {
+                if (isLoadingDetails && selectedQuality == null)
+                    Box(modifier = Modifier.fieldDropdownSize().fieldStyle(),
+                        contentAlignment = Alignment.CenterStart) {
+                        Box(
+                            modifier = Modifier.fieldPadding()
+                                .size(90.dp, 10.dp)
+                                .alpha(pulseAlpha)
+                                .background(AppTheme.SurfaceHigh, Sizes.Round4)
+                                .border(1.dp, AppTheme.Border, Sizes.Round4),
+                        )
+                    }
+                else
+                    FieldDropdown(
+                        value = selectedQuality?.let { formatLabel(it) } ?: AnnotatedString(""),
+                        expanded = expandedQuality,
+                        onExpandedChange = onExpandedQualityChange,
+                        options = qualityOptions,
+                        onSelect = onQualityChange,
+                        label = formatLabel
+                    )
+            }
+
+            PropertyRow(label = "Destination") {
+                FieldText(
+                    value = destination,
+                    onValueChange = { destination = it; Prefs.downloadFolder = it },
+                    color = AppTheme.Font2,
+                    outerContent = {
+                        ActionIcon(
+                            iconName = "folder",
+                            iconSize = 13.dp,
+                            shape = Sizes.Round6,
+                            modifier = Modifier.size(Sizes.FieldHeightText)
+                        ) {
+                            NativeFolderPicker.pickFolder(
+                                title = "Set downloads destination folder: ",
+                                initialDir = Prefs.downloadFolder
+                            )?.let { // .let permite hacer algo con el valor nullable devuelto si no es nulo
+                                destination = it
+                                Prefs.downloadFolder = it
+                            }
+                        }
+                    }
+                ) {
+                    if (Prefs.downloadFolder.isEmpty()) {
+                        Text("Select download destination folder...", color = AppTheme.Font2, fontSize = Sizes.FieldFontSize)
+                    }
+                }
             }
         }
     }
@@ -595,6 +591,16 @@ private fun MediaPlaylist(
 
     // sincronizar por si 'previewItems' cambia desde afuera
     LaunchedEffect(previewItems) { currentItems = previewItems }
+
+    LaunchedEffect(selectedVideoId, currentItems) {
+        if (!selectedVideoId.isNullOrEmpty() && currentItems.isNotEmpty()) {
+            val targetIndex = currentItems.indexOfFirst { it.id == selectedVideoId }
+            if (targetIndex >= 0) {
+                val scrollIndex = (targetIndex - 1).coerceAtLeast(0)
+                scrollState.animateScrollToItem(scrollIndex)
+            }
+        }
+    }
 
     LaunchedEffect(scrollState) {
         // cada vez que 'layoutInfo.visibleItemsInfo' cambia
@@ -618,7 +624,7 @@ private fun MediaPlaylist(
     Column(
         modifier = Modifier.fillMaxWidth()
             .height(150.dp)
-            .padding(horizontal = 4.dp, vertical = 2.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             LazyRow(
@@ -683,25 +689,143 @@ private fun MediaPlaylist(
     }
 }
 
+@Composable
+fun VideoAudioToggle(
+    isAudio: Boolean,
+    onModeChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSourceVideo = remember { MutableInteractionSource() }
+    val isHoveredVideo by interactionSourceVideo.collectIsHoveredAsState()
+
+    val interactionSourceAudio = remember { MutableInteractionSource() }
+    val isHoveredAudio by interactionSourceAudio.collectIsHoveredAsState()
+
+    val shape = RoundedCornerShape(8.dp)
+    val segmentShape = RoundedCornerShape(6.dp)
+
+    Box(
+        modifier = modifier
+            .height(Sizes.FieldHeightText)
+            .background(AppTheme.Border, shape)
+            .padding(1.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .background(AppTheme.Sunken, shape)
+                .padding(2.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxHeight(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Video option
+                val isVideoSelected = !isAudio
+                val videoBg by animateColorAsState(
+                    if (isVideoSelected) AppTheme.Accent.copy(0.15f) else if (isHoveredVideo) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
+                    animationSpec = tween(300)
+                )
+                val videoContentColor by animateColorAsState(
+                    if (isVideoSelected) AppTheme.Accent else if (isHoveredVideo) AppTheme.Font1 else AppTheme.Font2,
+                    animationSpec = tween(300)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clip(segmentShape)
+                        .background(videoBg, segmentShape)
+                        .clickable(
+                            interactionSource = interactionSourceVideo,
+                            indication = null
+                        ) { onModeChange(false) }
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource("icons/tab_play.svg"),
+                        contentDescription = "Video",
+                        tint = videoContentColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = "Video",
+                        color = videoContentColor,
+                        fontSize = Sizes.FieldFontSize,
+                        fontWeight = if (isVideoSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+
+                // Audio option
+                val audioBg by animateColorAsState(
+                    if (isAudio) AppTheme.Accent.copy(0.15f) else if (isHoveredAudio) AppTheme.SurfaceHigh.copy(alpha = 0.5f) else Color.Transparent,
+                    animationSpec = tween(300)
+                )
+                val audioContentColor by animateColorAsState(
+                    if (isAudio) AppTheme.Accent else if (isHoveredAudio) AppTheme.Font1 else AppTheme.Font2,
+                    animationSpec = tween(300)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clip(segmentShape)
+                        .background(audioBg, segmentShape)
+                        .clickable(
+                            interactionSource = interactionSourceAudio,
+                            indication = null
+                        ) { onModeChange(true) }
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource("icons/tab_audio.svg"),
+                        contentDescription = "Audio",
+                        tint = audioContentColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = "Audio",
+                        color = audioContentColor,
+                        fontSize = Sizes.FieldFontSize,
+                        fontWeight = if (isAudio) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 
 // Utils
 // ───────────────────────────────────────────────────────
 @Composable // Fila de propiedades
-private fun PropRow(label: String, content: @Composable RowScope.() -> Unit) {
+private fun PropertyRow(
+    label: String,
+    bottomSpacer: Boolean = false, topSpacer: Boolean = false,
+    content: @Composable RowScope.() -> Unit
+) {
+    if (topSpacer) Spacer(modifier = Modifier.height(14.dp))
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(26.dp),
+        modifier = Modifier.fillMaxWidth().height(Sizes.FieldHeightText),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = label,
             color = AppTheme.Font2,
-            fontSize = 12.sp,
-            modifier = Modifier.width(55.dp)
+            fontSize = Sizes.FieldFontSize,
+            modifier = Modifier.width(80.dp)
         )
         content()
     }
+    if (bottomSpacer) Spacer(modifier = Modifier.height(14.dp))
 }
 
 private fun getSelectedExtension(isAudio: Boolean = false, video: VideoDetails): String =

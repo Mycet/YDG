@@ -3,6 +3,7 @@ package dev.mycet.ydg.data.models
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.mycet.ydg.utils.toMB
 import java.util.*
 
 interface DownloadItem {
@@ -11,6 +12,8 @@ interface DownloadItem {
     var progress: Float
     var sizeText: String
     var speed: String
+    var eta: String
+    var statusPhase: String
     var isDone: Boolean
     var hasError: Boolean
     var isVisible: Boolean
@@ -21,6 +24,8 @@ class SimpleTask(override var title: String): DownloadItem {
     override var progress by mutableStateOf(0f)
     override var sizeText by mutableStateOf("")
     override var speed by mutableStateOf("")
+    override var eta by mutableStateOf("")
+    override var statusPhase by mutableStateOf("")
     override var isDone by mutableStateOf(false)
     override var hasError by mutableStateOf(false)
     override var isVisible by mutableStateOf(true)
@@ -31,74 +36,78 @@ class DownloadTask(override val title: String): DownloadItem {
     override var progress by mutableStateOf(0f)
     override var sizeText by mutableStateOf("")
     override var speed by mutableStateOf("")
+    override var eta by mutableStateOf("")
+    override var statusPhase by mutableStateOf("")
     override var isDone by mutableStateOf(false)
     override var hasError by mutableStateOf(false)
     override var isVisible by mutableStateOf(true)
 
     private var filesDownloadingCount = 0
-    private var phase1SizeMiB = 0f
-    private var currentSizeMiB = 0f
+    private var isAudioPhase = false
+    private var phase1TotalMB = 0f
+    private var currentPhaseTotalMB = 0f
+    private var lastRawProgress = 0f
 
     fun updateFromLog(line: String) {
         // Empieza una fase de descarga (video/audio)
-        if (line.contains("[download] Destination:")) {
-            filesDownloadingCount++
-
-            if (filesDownloadingCount == 2)
-                phase1SizeMiB = currentSizeMiB // guardar el peso de la fase anterior para sumarlos después
+        if (line.contains("[download] Destination:") && currentPhaseTotalMB > 0f && !isAudioPhase) {
+            isAudioPhase = true
+            phase1TotalMB = currentPhaseTotalMB
         }
 
-        // Buscar progreso %
+        // Buscar progreso % y verificar cambio de fase por caída de progreso
         val pctMatch = Regex("""(\d+(?:\.\d+)?)%""").find(line)
-        pctMatch?.groupValues?.get(1)?.toFloatOrNull()?.let { newPct ->
-            val p = newPct / 100f
-
-            // Video: 75% de la barra es del video y el otro 25% del audio
-            // Audio: 100% de la barra es del audio
-            progress = when (filesDownloadingCount) {
-                0, 1 -> p * 0.75f
-                2 -> 0.75f + (p * 0.25f)
-                else -> 1f
+        val p = pctMatch?.groupValues?.get(1)?.toFloatOrNull()?.let { (it / 100f).coerceIn(0f, 1f) }
+        if (p != null) {
+            if (!isAudioPhase && lastRawProgress > 0.85f && p < 0.15f) {
+                isAudioPhase = true
+                phase1TotalMB = currentPhaseTotalMB
             }
+            lastRawProgress = p
         }
 
-        // Extraer MiB y sumar
+        // Extraer peso total y pasar a MB
         val sizeMatch = Regex("""of\s+~?([0-9.]+)([a-zA-Z]+)""").find(line)
         if (sizeMatch != null) {
             val num = sizeMatch.groupValues[1].toFloatOrNull() ?: 0f
             val unit = sizeMatch.groupValues[2].lowercase()
+            currentPhaseTotalMB = num.toMB(unit).toFloat()
+        }
 
-            // Pasar a MiB
-            val sizeInMiB = when {
-                unit.contains("gib") -> num * 1024f
-                unit.contains("gb") -> num * 1000f * 1000f / 1024f / 1024f
-                unit.contains("kib") -> num / 1024f
-                unit.contains("kb") -> num * 1000f / 1024f / 1024f
-                unit.contains("mib") -> num
-                unit.contains("mb") -> num * 1000f * 1000f / 1024f / 1024f
-                else -> num
-            }
-            currentSizeMiB = sizeInMiB
-
-            //                         sumar                 pasar a MB
-            val totalMB = (phase1SizeMiB + currentSizeMiB) * 1.048576
-            sizeText = String.format("%.1f MB", totalMB)
+        // Cálculo de progreso y texto "descargado / total"
+        if (p != null) {
+            progress = if (isAudioPhase) (0.85f + (p * 0.15f)) else (p * 0.85f)
+            val currentDownloadedMB = currentPhaseTotalMB * p
+            val totalDownloadedMB = phase1TotalMB + currentDownloadedMB
+            val grandTotalMB = phase1TotalMB + currentPhaseTotalMB
+            if (grandTotalMB > 0f)
+                sizeText = String.format(Locale.US, "%.1f / %.1f MB", totalDownloadedMB, grandTotalMB)
         }
 
         // Extraer velocidad
-        val speedMatch = Regex("""at\s+([a-zA-Z0-9./]+)""").find(line)
-        speedMatch?.groupValues?.get(1)?.let { speed = it }
+        val speedMatch = Regex("""at\s+~?([0-9.]+)([a-zA-Z/]+)""").find(line)
+        if (speedMatch != null) {
+            val num = speedMatch.groupValues[1].toFloatOrNull()
+            val unit = speedMatch.groupValues[2].lowercase()
+            if (num != null)
+                speed = String.format(Locale.US, "%.1f MB/s", num.toMB(unit))
+        }
+
+        // Extraer ETA (tiempo restante)
+        val etaMatch = Regex("""ETA\s+([0-9:]+)""").find(line)
+        etaMatch?.groupValues?.get(1)?.let { eta = it }
 
         // Detectar fases post-descarga
         if (line.contains("[Merger]")) {
-            speed = "Uniendo video y audio..."
+            statusPhase = "Merging..."
+            speed = ""; eta = ""
             progress = 1f
         } else if (line.contains("[ThumbnailsConvertor]") || line.contains("[EmbedThumbnail]")) {
-            speed = "Procesando metadatos..."
+            statusPhase = "Metadata..."
+            speed = ""; eta = ""
         }
 
-        if (line.lowercase().contains("error"))
+        if (line.startsWith("ERROR:") || line.startsWith("Error:") || line.startsWith("[error]"))
             hasError = true
     }
 }
-
