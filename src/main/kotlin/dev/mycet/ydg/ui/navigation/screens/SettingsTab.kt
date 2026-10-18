@@ -32,10 +32,7 @@ import dev.mycet.ydg.utils.fieldTextSize
 import dev.mycet.ydg.utils.titleCase
 import javafx.application.Platform
 import javafx.stage.DirectoryChooser
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.io.File
 import java.util.concurrent.CompletableFuture
 
@@ -98,6 +95,7 @@ fun SettingsTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
     }
 
     var rememberMediaSettings by remember { mutableStateOf(Prefs.rememberMediaSettings) }
+    var rememberLastLink by remember { mutableStateOf(Prefs.rememberLastLink) }
 
     Column(
         modifier = Modifier
@@ -163,12 +161,21 @@ fun SettingsTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                 )
             }
 
-            SettingsRow(bottomSpacer = false) {
+            SettingsRow() {
                 SettingsSwitch(
                     title = "Remember media settings",
                     checked = rememberMediaSettings,
                     onCheckedChange = { rememberMediaSettings = it; Prefs.rememberMediaSettings = it },
                     description = "Reuse your last Media tab choices for new links."
+                )
+            }
+
+            SettingsRow(bottomSpacer = false) {
+                SettingsSwitch(
+                    title = "Remember last link",
+                    checked = rememberLastLink,
+                    onCheckedChange = { rememberLastLink = it; Prefs.rememberLastLink = it },
+                    description = "Keep the last link when restarting the app."
                 )
             }
 
@@ -361,7 +368,7 @@ fun SettingsFolder(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldTextHeight)
     ) {
         SettingLabel(title = title, description = description, statusColor = statusColor)
 
@@ -405,7 +412,7 @@ fun SettingsFolder(
                             iconName = icon,
                             iconSize = 13.dp,
                             shape = Sizes.Round6,
-                            modifier = Modifier.size(Sizes.TextFieldHeight)
+                            modifier = Modifier.size(Sizes.FieldTextHeight)
                         ) { onDownload() }
                     }
                 }
@@ -413,7 +420,7 @@ fun SettingsFolder(
                     iconName = "folder",
                     iconSize = 13.dp,
                     shape = Sizes.Round6,
-                    modifier = Modifier.size(Sizes.TextFieldHeight)
+                    modifier = Modifier.size(Sizes.FieldTextHeight)
                 ) { onLocate() }
             }
         ) {
@@ -433,7 +440,7 @@ fun SettingText(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         // defaultMinSize permite que la fila crezca si hay 2 líneas de texto
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldTextHeight)
     ) {
         SettingLabel(title = title, description = description)
 
@@ -470,7 +477,7 @@ fun SettingText(
 fun <T> SettingsDropdown(
     title: String,
     value: String, description: String = "",
-    modifier: Modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight),
+    modifier: Modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldTextHeight),
     options: List<T>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -504,7 +511,7 @@ fun SettingsSwitch(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.TextFieldHeight)
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = Sizes.FieldTextHeight)
     ) {
         SettingLabel(title = title, description = description)
 
@@ -532,8 +539,7 @@ private fun runDownloadTask(
     activeDownloads.add(taskTitle)
 
     val task = onNewTask(taskTitle)
-
-    scope.launch {
+    val job = scope.launch {
         try {
             val targetFolder = currentFolder.ifEmpty {
                 File(System.getProperty("user.dir"), "bin").absolutePath
@@ -542,14 +548,14 @@ private fun runDownloadTask(
             if (currentFolder.isEmpty())
                 onFolderUpdate(targetFolder)
 
-            File(targetFolder).mkdirs()
-
             action(targetFolder, task)
-
+            task.isCompleted = true
+        } catch (_: CancellationException) {
+        } catch (e: Exception) {
+            task.hasError = true
         } finally { // finally es un bloque que se ejecuta siempre aunque haya un error
-            task.isDone = true
-            task.progress = 1f
             activeDownloads.remove(taskTitle)
         }
     }
+    task.onCancel = { job.cancel() }
 }

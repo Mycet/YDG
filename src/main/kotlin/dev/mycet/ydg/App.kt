@@ -4,16 +4,14 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.LocalScrollbarStyle
-import androidx.compose.foundation.ScrollbarStyle
-import androidx.compose.foundation.background
-import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material.Icon
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -22,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.core.Dependencies
@@ -29,6 +29,7 @@ import dev.mycet.ydg.data.models.DownloadItem
 import dev.mycet.ydg.data.models.DownloadTask
 import dev.mycet.ydg.data.models.SimpleTask
 import dev.mycet.ydg.data.prefs.Prefs
+import dev.mycet.ydg.ui.components.ActionIcon
 import dev.mycet.ydg.ui.components.BevelContainer
 import dev.mycet.ydg.ui.navigation.AppTab
 import dev.mycet.ydg.ui.navigation.TabBar
@@ -36,7 +37,12 @@ import dev.mycet.ydg.ui.navigation.screens.MediaTab
 import dev.mycet.ydg.ui.navigation.screens.SettingsTab
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
+import dev.mycet.ydg.ui.theme.toDP
+import dev.mycet.ydg.utils.toSVG
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 // 'recomposición' se le llama al llamado de una función
@@ -151,7 +157,7 @@ fun App(isSidebarExpanded: Boolean = false) {
 
             DownloadQueueOverlay(
                 downloads,
-                modifier = Modifier.align(Alignment.TopEnd).padding(bottom = 16.dp, end = 24.dp)
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 64.dp, bottom = 16.dp, end = 24.dp)
             )
         }
     }
@@ -159,22 +165,26 @@ fun App(isSidebarExpanded: Boolean = false) {
 
 @Composable
 fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifier = Modifier) {
+    val maxVisible = 4
+    val visibleTasks = downloads.take(maxVisible)
+    val queuedCount = (downloads.size - visibleTasks.size).coerceAtLeast(0)
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = modifier.width(300.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        downloads.takeLast(4).forEach { task ->
+        visibleTasks.forEach { task ->
             // key(task.id) es para que cada task tenga su propio id, para que no se repitan ni se asigne por el orden
             key(task.id) {
-                LaunchedEffect(task.isDone, task.hasError) {
-                    if (task.isDone || task.hasError) {
+                LaunchedEffect(task.isCompleted, task.hasError) {
+                    if (task.isCompleted || task.hasError) {
                         delay(7.seconds)
                         task.isVisible = false
                         delay(0.5.seconds)
-                        downloads.remove(task)
+                        if (downloads.contains(task)) downloads.remove(task)
                     }
                 }
-
 
                 val transitionState = remember { MutableTransitionState(false) }
                 transitionState.targetState = task.isVisible
@@ -186,7 +196,7 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                 ) {
                     val interactionSource = remember { MutableInteractionSource() }
                     val isHovered by interactionSource.collectIsHoveredAsState()
-                    val alpha by animateFloatAsState(targetValue = if (isHovered) 1f else if (task.isDone) 0.5f else 0.75f)
+                    val alpha by animateFloatAsState(targetValue = if (isHovered) 1f else if (task.isCompleted) 0.5f else 0.75f)
 
                     BevelContainer(modifier = Modifier
                         .fillMaxWidth()
@@ -200,37 +210,75 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                                 .padding(8.dp),
                             verticalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = task.title,
-                                color = AppTheme.Font1,
-                                fontSize = 12.sp,
-                                maxLines = 1
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = task.title,
+                                    color = AppTheme.Font1,
+                                    fontSize = Sizes.TooltipFont,
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f).padding(end = 6.dp)
+                                )
+
+                                val closeInteraction = remember { MutableInteractionSource() }
+                                val isCloseHovered by closeInteraction.collectIsHoveredAsState()
+
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(Sizes.Round4)
+                                        .background(if (isCloseHovered) AppTheme.SurfaceHigh else Color.Transparent)
+                                        .clickable(
+                                            interactionSource = closeInteraction,
+                                            indication = null
+                                        ) {
+                                            if (!task.isCompleted && !task.hasError)
+                                                task.cancel()
+
+                                            task.isVisible = false
+                                            scope.launch {
+                                                delay(400.milliseconds)
+                                                if (downloads.contains(task)) downloads.remove(task)
+                                            }
+                                        }
+                                ) {
+                                    Icon(
+                                        painter = painterResource("cross".toSVG()),
+                                        contentDescription = if (task.isCompleted || task.hasError) "Close" else "Cancel",
+                                        tint = if (isCloseHovered) {
+                                            if (task.isCompleted || task.hasError) AppTheme.Font1 else AppTheme.Red
+                                        } else AppTheme.Font2.copy(0.6f),
+                                        modifier = Modifier.size(9.dp)
+                                    )
+                                }
+                            }
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val statusStr = when {
-                                    task.hasError -> "Error"
-                                    task.isDone -> "Done"
-                                    task.statusPhase.isNotEmpty() -> task.statusPhase
-                                    else -> "${(task.progress * 100).toInt()}%"
-                                }
-                                Text(
-                                    text = statusStr,
-                                    color = if (task.hasError) AppTheme.Red else AppTheme.Font2,
-                                    fontSize = Sizes.TooltipFont
-                                )
-
-                                if (task.isDone) {
+                                if (task.isCompleted) {
                                     if (task.sizeText.isNotEmpty()) {
-                                        val finalSize = task.sizeText.substringAfter("/ ").ifEmpty { task.sizeText }
-                                        Text(
-                                            text = "Final: ~${finalSize}",
-                                            color = AppTheme.Font2,
-                                            fontSize = Sizes.TooltipFont
-                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                painter = painterResource("check".toSVG()),
+                                                contentDescription = "CompletedCheck",
+                                                tint = AppTheme.Green,
+                                                modifier = Modifier.size(Sizes.FieldFontSize.toDP())
+                                            )
+
+                                            val finalSize = task.sizeText.substringAfter("/ ").ifEmpty { task.sizeText }
+                                            Text(
+                                                text = "Completed · ~${finalSize}",
+                                                color = AppTheme.Font2,
+                                                fontSize = Sizes.TooltipFont
+                                            )
+                                        }
                                     }
                                 } else {
                                     val details = buildList {
@@ -247,14 +295,51 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                                         )
                                     }
                                 }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    val statusStr = when {
+                                        task.hasError -> "Error"
+                                        task.isCompleted -> "Show in folder"
+                                        task.statusPhase.isNotEmpty() -> task.statusPhase
+                                        else -> "${(task.progress * 100).toInt()}%"
+                                    }
+                                    Text(
+                                        text = statusStr,
+                                        color = if (task.hasError) AppTheme.Red else AppTheme.Font1,
+                                        fontSize = Sizes.TooltipFont,
+                                        modifier = if (task.isCompleted) {
+                                            Modifier.clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null
+                                            ) {
+                                                openTaskInExplorer(task)
+                                            }
+                                        } else Modifier
+                                    )
+                                    if (task.isCompleted) {
+                                        ActionIcon(
+                                            iconName = "folder", description = "showInFolder", iconSize = Sizes.TooltipIconSize, padding = 2.dp, shape = Sizes.Round4
+                                        ) { openTaskInExplorer(task) }
+                                    }
+                                }
                             }
 
+                            val progressColor = when {
+                                task.hasError -> AppTheme.Red
+                                task.isCompleted -> AppTheme.Green
+                                else -> lerpColor(AppTheme.Yellow, AppTheme.Green, task.progress.coerceIn(0f, 1f))
+                            }
+                            val progressAnimation by animateColorAsState(
+                                targetValue = progressColor,
+                                animationSpec = tween(250)
+                            )
+
                             LinearProgressIndicator(
-                                progress = if (task.isDone) 1f else task.progress,
+                                progress = if (task.isCompleted) 1f else task.progress,
                                 modifier = Modifier.fillMaxWidth()
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
-                                color = if (task.hasError) Color.Red else AppTheme.Accent,
+                                color = progressAnimation,
                                 backgroundColor = if (isHovered) AppTheme.Sunken.copy(alpha = 0.60f) else AppTheme.Sunken,
                             )
                         }
@@ -263,26 +348,70 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
             }
         }
     }
+
+    AnimatedVisibility(
+        visible = queuedCount > 0,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 4.dp),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .background(AppTheme.Surface.copy(0.85f), Sizes.Round4)
+                    .border(1.dp, AppTheme.Border, Sizes.Round4)
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "+$queuedCount ${if (queuedCount == 1) "task" else "tasks"}",
+                    color = AppTheme.Font2,
+                    fontSize = Sizes.TooltipFont,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
 }
 
+private fun lerpColor(start: Color, end: Color, fraction: Float): Color {
+    val f = fraction.coerceIn(0f, 1f)
+    return Color(
+        red = start.red + (end.red - start.red) * f,
+        green = start.green + (end.green - start.green) * f,
+        blue = start.blue + (end.blue - start.blue) * f,
+        alpha = start.alpha + (end.alpha - start.alpha) * f
+    )
+}
 
-/*
-           .drawBehind {
-                        val s = 0.5.dp.toPx() // offset necesario para trazar la linea
-                        val color = AppTheme.Border1
-                        val w = s * 2 // grosor de la linea
-                        val tabPx = tabWidth.toPx()
-                        val selectedIndex = selectedTab.ordinal
-                        val gapStart = tabPx * selectedIndex
-                        val gapEnd = gapStart + tabPx
-
-                        // Izquierdo, derecho, inferior
-                        drawLine(color, Offset(s, 0f), Offset(s, size.height), w)
-                        drawLine(color, Offset(size.width - s, 0f), Offset(size.width - s, size.height), w)
-                        // Superior izquierdo
-                        if (gapStart > 0f) // Solo si el tab seleccionado no es el primero, que está en el borde izquierdo
-                            drawLine(color, Offset(s, s), Offset(gapStart, s), w)
-                        // Superior derecho
-                        drawLine(color, Offset(gapEnd, s), Offset(size.width - s, s), w)
-                    }
-* */
+private fun openTaskInExplorer(task: DownloadItem) {
+    try {
+        val defaultFolder = when {
+            task.title.contains("yt-dlp", ignoreCase = true) -> File(Prefs.ytDlpFolder)
+            task.title.contains("ffmpeg", ignoreCase = true) -> File(Prefs.ffmpegFolder)
+            task.title.contains("deno", ignoreCase = true) -> File(Prefs.denoFolder)
+            else -> File(Prefs.downloadFolder)
+        }
+        val cleanTitle = task.title.replace("\"", "'").replace(Regex("[\\\\/:*?<>|]"), "_").trim()
+        val targetFile = if (defaultFolder.exists() && defaultFolder.isDirectory && cleanTitle.length >= 3) {
+            defaultFolder.listFiles()?.firstOrNull { file ->
+                file.isFile &&
+                        file.name.startsWith(cleanTitle, ignoreCase = true) &&
+                        !file.name.endsWith(".part") &&
+                        !file.name.endsWith(".ytdl")
+            }
+        } else null
+        if (targetFile != null && targetFile.exists()) {
+            ProcessBuilder("explorer.exe", "/select,", targetFile.absolutePath).start()
+        } else if (defaultFolder.exists()) {
+            ProcessBuilder("explorer.exe", defaultFolder.absolutePath).start()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}

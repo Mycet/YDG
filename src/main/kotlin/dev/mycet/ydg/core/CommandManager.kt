@@ -5,6 +5,7 @@ import dev.mycet.ydg.data.models.VideoInfo
 import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.ui.navigation.screens.MediaOptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -13,6 +14,7 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.util.zip.ZipFile
+import kotlin.coroutines.cancellation.CancellationException
 
 private val json = Json { ignoreUnknownKeys = true }
 
@@ -22,38 +24,64 @@ object CommandManager {
         return "${Prefs.ytDlpFolder}${File.separator}yt-dlp.exe"
     }
 
+    fun killProcessTree(process: Process?) {
+        if (process == null) return
+        try {
+            val descendants = process.descendants()
+            val pid = process.pid()
+            ProcessBuilder("taskkill", "/F", "/T", "/PID", pid.toString())
+                .redirectErrorStream(true)
+                .start()
+                .waitFor()
+
+            descendants.forEach { runCatching { it.destroyForcibly() } }
+            process.destroyForcibly()
+        } catch (_: Exception) {
+            process.descendants().forEach { runCatching { it.destroyForcibly() } }
+            process.destroyForcibly()
+        }
+    }
+
     // 'suspend' es parecido a 'new Thread', es para que no congele el programa
-    private suspend fun execute(comando: List<String>, onProgress: (String) -> Unit) {
+    private suspend fun execute(
+        comando: List<String>,
+        onProgress: (String) -> Unit,
+        onProcess: ((Process) -> Unit)? = null
+    ) {
         // withContext hace que ejecute en otro thread en lugar del Main
         // IO para operaciones bloqueantes (leer archivos, procesos, red)
         // Swing para cambios de estado de Compose, cosas que modifiquen la UI
         withContext(Dispatchers.IO) {
+            ensureActive()
+            var process: Process? = null
             try {
-                val proceso = ProcessBuilder(comando)
+                process = ProcessBuilder(comando)
                     .redirectErrorStream(true)
                     .start()
 
-                val reader = proceso.inputStream.bufferedReader()
+                onProcess?.invoke(process)
+                ensureActive()
+
+                val reader = process.inputStream.bufferedReader()
                 var linea = reader.readLine()
                 while (linea != null) {
-                    println("[yt-dlp]: $linea") // <- Esto saldrá en la consola de IntelliJ
+                    ensureActive()
+                    println("[yt-dlp]: $linea")
                     withContext(Dispatchers.Swing) {
                         onProgress(linea)
                     }
                     linea = reader.readLine()
                 }
 
-                proceso.waitFor()
+                process.waitFor()
             } catch (ex: Exception) {
+                if (ex is CancellationException) throw ex
                 ex.printStackTrace()
                 withContext(Dispatchers.Swing) {
-                    // ${ } o $ es para insertar variables o resultados de funciones u operaciones
-                    // Se usa ${} para lo segundo, o para variables cuando es ambiguo y puede confundirse con el texto
-                    // Si kotlin no puede leer y distinguir entre variable y texto, te va a pedir {}
-                    // val sep = File.separator
-                    // $sepbin no se entiende donde termina la variable, entonces te pide llaves -> ${sep}bin -> /bin
                     onProgress("Error: ${ex.message}")
                 }
+            } finally {
+                killProcessTree(process)
             }
         }
     }
@@ -63,7 +91,8 @@ object CommandManager {
         options: MediaOptions,
         formatId: String,
         extension: String,
-        onProgress: (String) -> Unit
+        onProgress: (String) -> Unit,
+        onProcess: ((Process) -> Unit)? = null
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar tras crear
@@ -72,7 +101,7 @@ object CommandManager {
             addCommonMediaArgs(url, options, this)
         }
 
-        execute(comando, onProgress);
+        execute(comando, onProgress, onProcess);
     }
 
     suspend fun downloadAudio(
@@ -81,7 +110,8 @@ object CommandManager {
         format: String,
         formatId: String,
         bitrate: Int,
-        onProgress: (String) -> Unit
+        onProgress: (String) -> Unit,
+        onProcess: ((Process) -> Unit)? = null
     ) {
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar directamente al crearlo
@@ -91,7 +121,7 @@ object CommandManager {
             addCommonMediaArgs(url, options, this)
         }
 
-        execute(comando, onProgress);
+        execute(comando, onProgress, onProcess);
     }
 
     fun addCommonMediaArgs(url: String, options: MediaOptions, cmd: MutableList<String>) {

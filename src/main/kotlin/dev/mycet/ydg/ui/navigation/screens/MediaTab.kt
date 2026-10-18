@@ -1,22 +1,20 @@
 package dev.mycet.ydg.ui.navigation.screens
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
-import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,7 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
@@ -36,6 +34,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.core.CommandManager
@@ -48,15 +47,9 @@ import dev.mycet.ydg.utils.fieldDropdownSize
 import dev.mycet.ydg.utils.fieldPadding
 import dev.mycet.ydg.utils.fieldStyle
 import kotlinx.coroutines.*
+import java.util.Objects.toString
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.compose.ui.platform.LocalClipboardManager
-import java.util.Objects.toString
-import androidx.compose.foundation.TooltipArea
-import androidx.compose.foundation.TooltipPlacement
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
 
 
 data class MediaOptions(
@@ -77,7 +70,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
     val focusManager = LocalFocusManager.current
 
     var isAudio by remember { mutableStateOf(initialIsAudio) }
-    var url by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf(if (Prefs.rememberLastLink) Prefs.lastLink else "") }
     var previewItems by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
     var isLoadingList by remember { mutableStateOf(false) }
     var loadedVideoId by remember { mutableStateOf("") }
@@ -120,6 +113,8 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
         loadedVideoId = ""
         options = options.copy(title = "", author = "", album = "")
         if (url.startsWith("http")) {
+            Prefs.lastLink = url
+
             isLoadingList = true
             delay(800.milliseconds)
 
@@ -174,14 +169,14 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
-                .height(Sizes.TextFieldHeight) // ancho fijo para todos los elementos de la fila
+                .height(Sizes.FieldTextHeight) // ancho fijo para todos los elementos de la fila
                 .padding(horizontal = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             FieldText(
                 modifier = Modifier
                     .weight(1f)
-                    .height(Sizes.TextFieldHeight),
+                    .height(Sizes.FieldTextHeight),
                 value = url,
                 onValueChange = { url = it },
                 leadingIcon = {
@@ -360,28 +355,52 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                                     duration = nonNullDetails.duration.roundToInt(),
                                 ) {
                                     val task = onNewDownload(options.title)
-                                    scope.launch {
-                                        if (currentIsAudio) {
-                                            val fmt = selectedAudioQuality ?: return@launch
-                                            CommandManager.downloadAudio(
-                                                url = nonNullDetails.url,
-                                                options = options,
-                                                formatId = fmt.formatId,
-                                                format = selectedAudioExt,
-                                                bitrate = fmt.audioBitrate?.toInt() ?: 128,
-                                                onProgress = { line -> task.updateFromLog(line) }
-                                            )
-                                        } else {
-                                            val fmt = selectedVideoQuality ?: return@launch
-                                            CommandManager.downloadVideo(
-                                                url = nonNullDetails.url,
-                                                options = options,
-                                                formatId = fmt.formatId,
-                                                extension = fmt.extension,
-                                                onProgress = { line -> task.updateFromLog(line) }
-                                            )
+                                    var job: Job? = null
+                                    var currentProcess: Process? = null
+
+                                    task.onCancel = {
+                                        val proc = currentProcess
+                                        job?.cancel()
+                                        scope.launch(Dispatchers.IO) {
+                                            CommandManager.killProcessTree(proc)
+                                            task.cleanResidualFiles()
                                         }
-                                        task.isDone = true
+                                    }
+
+                                    job = scope.launch {
+                                        try {
+                                            if (currentIsAudio) {
+                                                val fmt = selectedAudioQuality ?: return@launch
+                                                CommandManager.downloadAudio(
+                                                    url = nonNullDetails.url,
+                                                    options = options,
+                                                    formatId = fmt.formatId,
+                                                    format = selectedAudioExt,
+                                                    bitrate = fmt.audioBitrate?.toInt() ?: 128,
+                                                    onProgress = { line -> task.updateFromLog(line) },
+                                                    onProcess = { proc -> currentProcess = proc }
+                                                )
+                                            } else {
+                                                val fmt = selectedVideoQuality ?: return@launch
+                                                CommandManager.downloadVideo(
+                                                    url = nonNullDetails.url,
+                                                    options = options,
+                                                    formatId = fmt.formatId,
+                                                    extension = fmt.extension,
+                                                    onProgress = { line -> task.updateFromLog(line) },
+                                                    onProcess = { proc -> currentProcess = proc }
+                                                )
+                                            }
+                                            task.isCompleted = true
+                                        } catch (_: CancellationException) { // Descarga cancelada por el usuario
+                                            val proc = currentProcess
+                                            scope.launch(Dispatchers.IO) {
+                                                CommandManager.killProcessTree(proc)
+                                                task.cleanResidualFiles()
+                                            }
+                                        } finally {
+                                            currentProcess = null
+                                        }
                                     }
                                 }
                             }
@@ -647,9 +666,9 @@ private fun MediaDetailsPanel(
                     outerContent = {
                         ActionIcon(
                             iconName = "folder",
-                            iconSize = 13.dp,
+                            iconSize = Sizes.FieldIconSize,
                             shape = Sizes.Round6,
-                            modifier = Modifier.size(Sizes.TextFieldHeight)
+                            modifier = Modifier.size(Sizes.FieldTextHeight)
                         ) {
                             NativeFolderPicker.pickFolder(
                                 title = "Set downloads destination folder: ",
@@ -793,7 +812,7 @@ private fun PropertyRow(
     if (topSpacer) Spacer(modifier = Modifier.height(14.dp))
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Sizes.TextFieldHeight),
+        modifier = Modifier.fillMaxWidth().height(Sizes.FieldTextHeight),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(

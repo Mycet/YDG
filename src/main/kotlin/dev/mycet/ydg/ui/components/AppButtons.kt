@@ -217,7 +217,7 @@ fun <T> FieldDropdown(
     onSelect: (T) -> Unit,
     label: (T) -> AnnotatedString,
     modifier: Modifier = Modifier.width(200.dp),
-    height: Dp = Sizes.TextFieldHeight
+    height: Dp = Sizes.FieldTextHeight
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -277,7 +277,7 @@ fun <T> FieldDropdown(
                             )
                         }
                     },
-                    modifier = Modifier.height(Sizes.TextFieldHeight),
+                    modifier = Modifier.height(Sizes.FieldTextHeight),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     onClick = {
                         onSelect(option)
@@ -298,8 +298,8 @@ fun <T> FieldDropdown(
     options: List<T>,
     onSelect: (T) -> Unit,
     label: (T) -> String,
-    modifier: Modifier = Modifier.width(Sizes.FieldWidthDropdown),
-    height: Dp = Sizes.TextFieldHeight
+    modifier: Modifier = Modifier.width(Sizes.FieldDropdownWidth),
+    height: Dp = Sizes.FieldTextHeight
 ) = FieldDropdown(
     value = AnnotatedString(value),
     expanded = expanded,
@@ -313,7 +313,7 @@ fun <T> FieldDropdown(
 
 @Composable
 fun FieldText(
-    modifier: Modifier = Modifier.width(Sizes.TextFieldWidth).height(Sizes.TextFieldHeight),
+    modifier: Modifier = Modifier.width(Sizes.FieldTextWidth).height(Sizes.FieldTextHeight),
     value: String,
     onValueChange: (String) -> Unit,
     color: Color = AppTheme.Font1,
@@ -473,7 +473,7 @@ fun <T> MultiOptionSwitch(
     unselectedContentColor: Color = AppTheme.Font2,
     selectedContentColor: Color = AppTheme.Accent,
     optionPaddingHorizontal: Dp = 10.dp,
-    height: Dp = Sizes.TextFieldHeight,
+    height: Dp = Sizes.FieldTextHeight,
     shape: Shape = RoundedCornerShape(8.dp),
     segmentShape: Shape = RoundedCornerShape(6.dp)
 ) {

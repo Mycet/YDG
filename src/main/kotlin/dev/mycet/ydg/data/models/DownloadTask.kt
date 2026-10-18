@@ -3,7 +3,9 @@ package dev.mycet.ydg.data.models
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.utils.toMB
+import java.io.File
 import java.util.*
 
 interface DownloadItem {
@@ -14,9 +16,13 @@ interface DownloadItem {
     var speed: String
     var eta: String
     var statusPhase: String
-    var isDone: Boolean
+    var isCompleted: Boolean
     var hasError: Boolean
     var isVisible: Boolean
+    var onCancel: (() -> Unit)?
+    fun cancel() {
+        onCancel?.invoke()
+    }
 }
 
 class SimpleTask(override var title: String): DownloadItem {
@@ -26,9 +32,10 @@ class SimpleTask(override var title: String): DownloadItem {
     override var speed by mutableStateOf("")
     override var eta by mutableStateOf("")
     override var statusPhase by mutableStateOf("")
-    override var isDone by mutableStateOf(false)
+    override var isCompleted by mutableStateOf(false)
     override var hasError by mutableStateOf(false)
     override var isVisible by mutableStateOf(true)
+    override var onCancel: (() -> Unit)? = null
 }
 
 class DownloadTask(override val title: String): DownloadItem {
@@ -38,17 +45,29 @@ class DownloadTask(override val title: String): DownloadItem {
     override var speed by mutableStateOf("")
     override var eta by mutableStateOf("")
     override var statusPhase by mutableStateOf("")
-    override var isDone by mutableStateOf(false)
+    override var isCompleted by mutableStateOf(false)
     override var hasError by mutableStateOf(false)
     override var isVisible by mutableStateOf(true)
+    override var onCancel: (() -> Unit)? = null
 
-    private var filesDownloadingCount = 0
     private var isAudioPhase = false
     private var phase1TotalMB = 0f
     private var currentPhaseTotalMB = 0f
     private var lastRawProgress = 0f
 
     fun updateFromLog(line: String) {
+        // Capturar rutas de archivos creados por yt-dlp para limpiarlos si se cancela
+        if (line.contains("Destination:")) {
+            val destPath = line.substringAfter("Destination:").trim().trim('"', '\'')
+            if (destPath.isNotBlank()) trackedFiles.add(destPath)
+        } else if (line.contains("Writing video thumbnail") || (line.contains("[info]") && line.contains("to:"))) {
+            val thumbPath = line.substringAfter("to:").trim().trim('"', '\'')
+            if (thumbPath.isNotBlank()) trackedFiles.add(thumbPath)
+        } else if (line.contains("Merging formats into")) {
+            val mergePath = line.substringAfter("Merging formats into").trim().trim('"', '\'')
+            if (mergePath.isNotBlank()) trackedFiles.add(mergePath)
+        }
+
         // Empieza una fase de descarga (video/audio)
         if (line.contains("[download] Destination:") && currentPhaseTotalMB > 0f && !isAudioPhase) {
             isAudioPhase = true
@@ -109,5 +128,37 @@ class DownloadTask(override val title: String): DownloadItem {
 
         if (line.startsWith("ERROR:") || line.startsWith("Error:") || line.startsWith("[error]"))
             hasError = true
+    }
+
+
+    val trackedFiles = mutableSetOf<String>()
+
+    fun cleanResidualFiles() {
+        trackedFiles.forEach { path ->
+            deleteFileSafely(File(path))
+            deleteFileSafely(File("$path.part"))
+            deleteFileSafely(File("$path.ytdl"))
+        }
+
+        val folder = File(Prefs.downloadFolder)
+        val cleanTitle = title.replace("\"", "'").replace(Regex("[\\\\/:*?<>|]"), "_").trim()
+        if (folder.exists() && folder.isDirectory && cleanTitle.length >= 3) {
+            val residualExtensions = listOf("part", "ytdl", "temp", "webp", "jpg", "jpeg", "png", "mp4", "m4a", "webm", "mp3")
+            folder.listFiles()?.forEach { file ->
+                if (
+                    file.isFile
+                    && file.name.startsWith(cleanTitle, true)
+                    && file.extension.lowercase() in residualExtensions
+                ) { deleteFileSafely(file) }
+            }
+        }
+    }
+
+    private fun deleteFileSafely(file: File) {
+        if (!file.exists()) return
+        for (i in 1..5) {
+            if (file.delete() || !file.exists()) return
+            try { Thread.sleep(80) } catch (_: Exception) {}
+        }
     }
 }

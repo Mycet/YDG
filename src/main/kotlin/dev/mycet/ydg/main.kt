@@ -60,6 +60,8 @@ fun main() {
                         ActionIcon(
                             iconName = "top_expand",
                             description = "TopExpand",
+                            modifier = Modifier.fillMaxHeight().width(40.dp),
+                            padding = 0.dp
                         ) {
                             isSidebarExpanded = !isSidebarExpanded
                             Prefs.isSidebarExpanded = isSidebarExpanded
@@ -71,6 +73,8 @@ fun main() {
                         ActionIcon(
                             iconName = "top_minimize",
                             description = "Minimize",
+                            modifier = Modifier.fillMaxHeight().width(40.dp),
+                            padding = 0.dp
                         ) {
                             windowState.isMinimized = true
                         }
@@ -78,6 +82,8 @@ fun main() {
                         ActionIcon(
                             iconName = if (windowState.placement == WindowPlacement.Floating) "top_maximize" else "top_restore",
                             description = if (windowState.placement == WindowPlacement.Floating) "Maximize" else "Restore",
+                            modifier = Modifier.fillMaxHeight().width(40.dp),
+                            padding = 0.dp
                         ) {
                             if (isMaximized) {
                                 normalBounds?.let { window.bounds = it }
@@ -101,6 +107,8 @@ fun main() {
                             hoveredColor = Color.Red,
                             iconName = "cross",
                             description = "Close",
+                            modifier = Modifier.fillMaxHeight().width(40.dp),
+                            padding = 0.dp
                         ) {
                             exitApplication()
                         }

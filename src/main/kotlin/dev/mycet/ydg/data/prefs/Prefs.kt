@@ -62,12 +62,6 @@ object Prefs {
             properties.setProperty("openOnStartup", value)
             save()
         }
-    var lastTab: String
-        get() = properties.getProperty("lastTab", "MEDIA")
-        set(value) {
-            properties.setProperty("lastTab", value)
-            save()
-        }
 
     var browserForCookies: String
         get() = properties.getProperty("browserForCookies", "")
@@ -76,9 +70,19 @@ object Prefs {
             save()
         }
 
+    var lastLink: String
+        get() = properties.getProperty("lastLink", "")
+        set(value) { properties.setProperty("lastLink", value); save() }
+    var lastTab: String
+        get() = properties.getProperty("lastTab", "MEDIA")
+        set(value) { properties.setProperty("lastTab", value); save() }
+
     var rememberMediaSettings: Boolean
-        get() = properties.getProperty("rememberMediaSettings", "false").toBoolean()
+        get() = properties.getProperty("rememberMediaSettings", "true").toBoolean()
         set(value) { properties.setProperty("rememberMediaSettings", value.toString()); save() }
+    var rememberLastLink: Boolean
+        get() = properties.getProperty("rememberLastLink", "true").toBoolean()
+        set(value) { properties.setProperty("rememberLastLink", value.toString()); save() }
 
     var embedThumbnail: Boolean
         get() = properties.getProperty("embedThumbnail", "true").toBoolean()

@@ -18,10 +18,10 @@ fun Modifier.fieldStyle(): Modifier = this
 fun Modifier.fieldPadding(): Modifier = this
     .padding(horizontal = 8.dp, vertical = 2.dp)
 
-fun Modifier.fieldTextSize(height: Dp = Sizes.TextFieldHeight, width: Dp = Sizes.TextFieldWidth): Modifier = this
+fun Modifier.fieldTextSize(height: Dp = Sizes.FieldTextHeight, width: Dp = Sizes.FieldTextWidth): Modifier = this
     .height(height)
     .width(width)
 
-fun Modifier.fieldDropdownSize(height: Dp = Sizes.TextFieldHeight, width: Dp = Sizes.FieldWidthDropdown): Modifier = this
+fun Modifier.fieldDropdownSize(height: Dp = Sizes.FieldTextHeight, width: Dp = Sizes.FieldDropdownWidth): Modifier = this
     .height(height)
     .width(width)

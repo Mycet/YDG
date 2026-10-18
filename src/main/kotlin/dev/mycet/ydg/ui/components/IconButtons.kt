@@ -39,7 +39,8 @@ fun ActionIcon(
     description: String = "TopIcon",
     shape: RoundedCornerShape = RoundedCornerShape(0.dp),
     iconSize: Dp = 13.dp,
-    modifier: Modifier = Modifier.width(40.dp),
+    padding: Dp = 6.dp,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -48,7 +49,6 @@ fun ActionIcon(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .fillMaxHeight()
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -58,6 +58,7 @@ fun ActionIcon(
                 color = if (isHovered) hoveredColor else backgroundColor,
                 shape = shape,
             )
+            .padding(padding)
     ) {
         Icon(
             painter = painterResource(iconName.toSVG()),
@@ -79,8 +80,6 @@ fun NavigationIcon(
     modifier: Modifier = Modifier,
     backgroundSelected: Color = AppTheme.Accent.copy(alpha = 0.15f),
     background: Color = AppTheme.Background,
-    colorIfHovered: Color = AppTheme.SurfaceHigh.copy(alpha = 0.15f),
-    color: Color = Color.Transparent,
     iconSize: Dp = 20.dp,
     onClick: () -> Unit
 ) {
