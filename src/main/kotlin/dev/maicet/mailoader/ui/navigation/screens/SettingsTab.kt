@@ -189,7 +189,7 @@ fun SettingsTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                     onValueChange = { ytDlpFolder = it; Prefs.ytDlpFolder = it },
                     onLocate = {
                         NativeFolderPicker.pickFolder(
-                            title = "Set downloads destination folder: ",
+                            title = "Set the YT-DLP destination folder: ",
                             initialDir = ytDlpFolder
                         )?.let {
                             ytDlpFolder = it
@@ -228,7 +228,7 @@ fun SettingsTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                     onValueChange = { ffmpegFolder = it; Prefs.ffmpegFolder = it },
                     onLocate = {
                         NativeFolderPicker.pickFolder(
-                            title = "Set downloads destination folder: ",
+                            title = "Set the ffmpeg destination folder: ",
                             initialDir = ffmpegFolder
                         )?.let {
                             ffmpegFolder = it
@@ -259,7 +259,7 @@ fun SettingsTab(scope: CoroutineScope, onNewTask: (String) -> SimpleTask) {
                     onValueChange = { denoFolder = it; Prefs.denoFolder = it },
                     onLocate = {
                         NativeFolderPicker.pickFolder(
-                            title = "Set downloads destination folder: ",
+                            title = "Set the deno destination folder: ",
                             initialDir = denoFolder
                         )?.let {
                             denoFolder = it
