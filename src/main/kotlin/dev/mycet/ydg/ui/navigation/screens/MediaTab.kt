@@ -77,6 +77,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
     val detailsCache = remember { mutableStateMapOf<String, VideoDetails>() }
 
     // Selected Media
+    val activeDownloads = remember { mutableStateListOf<String>() }
     var details by remember { mutableStateOf<VideoDetails?>(null) }
     var isLoadingDetails by remember { mutableStateOf(false) }
     var loadDetailsJob by remember { mutableStateOf<Job?>(null) }
@@ -352,56 +353,72 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                                     expandedQuality = expandedQuality,
                                     onExpandedQualityChange = { expandedQuality = it },
                                     isLoadingDetails = isLoadingDetails,
+                                    isDownloading = activeDownloads.contains(nonNullDetails.id),
                                     duration = nonNullDetails.duration.roundToInt(),
                                 ) {
+                                    val videoId = nonNullDetails.id
+                                    if (activeDownloads.contains(videoId)) return@MediaDetailsPanel
+
+                                    activeDownloads.add(videoId)
+
                                     val task = onNewDownload(options.title)
                                     var job: Job? = null
                                     var currentProcess: Process? = null
 
-                                    task.onCancel = {
-                                        val proc = currentProcess
-                                        job?.cancel()
-                                        scope.launch(Dispatchers.IO) {
-                                            CommandManager.killProcessTree(proc)
-                                            task.cleanResidualFiles()
-                                        }
-                                    }
+                                    fun startDownload() {
+                                        task.resetProgress()
 
-                                    job = scope.launch {
-                                        try {
-                                            if (currentIsAudio) {
-                                                val fmt = selectedAudioQuality ?: return@launch
-                                                CommandManager.downloadAudio(
-                                                    url = nonNullDetails.url,
-                                                    options = options,
-                                                    formatId = fmt.formatId,
-                                                    format = selectedAudioExt,
-                                                    bitrate = fmt.audioBitrate?.toInt() ?: 128,
-                                                    onProgress = { line -> task.updateFromLog(line) },
-                                                    onProcess = { proc -> currentProcess = proc }
-                                                )
-                                            } else {
-                                                val fmt = selectedVideoQuality ?: return@launch
-                                                CommandManager.downloadVideo(
-                                                    url = nonNullDetails.url,
-                                                    options = options,
-                                                    formatId = fmt.formatId,
-                                                    extension = fmt.extension,
-                                                    onProgress = { line -> task.updateFromLog(line) },
-                                                    onProcess = { proc -> currentProcess = proc }
-                                                )
-                                            }
-                                            task.isCompleted = true
-                                        } catch (_: CancellationException) { // Descarga cancelada por el usuario
+                                        task.onCancel = {
                                             val proc = currentProcess
+                                            job?.cancel()
                                             scope.launch(Dispatchers.IO) {
                                                 CommandManager.killProcessTree(proc)
                                                 task.cleanResidualFiles()
                                             }
-                                        } finally {
-                                            currentProcess = null
+
+                                            activeDownloads.remove(videoId)
+                                        }
+
+                                        job = scope.launch {
+                                            try {
+                                                if (currentIsAudio) {
+                                                    val fmt = selectedAudioQuality ?: return@launch
+                                                    CommandManager.downloadAudio(
+                                                        url = nonNullDetails.url,
+                                                        options = options,
+                                                        formatId = fmt.formatId,
+                                                        format = selectedAudioExt,
+                                                        bitrate = fmt.audioBitrate?.toInt() ?: 128,
+                                                        onProgress = { line -> task.updateFromLog(line) },
+                                                        onProcess = { proc -> currentProcess = proc }
+                                                    )
+                                                } else {
+                                                    val fmt = selectedVideoQuality ?: return@launch
+                                                    CommandManager.downloadVideo(
+                                                        url = nonNullDetails.url,
+                                                        options = options,
+                                                        formatId = fmt.formatId,
+                                                        extension = fmt.extension,
+                                                        onProgress = { line -> task.updateFromLog(line) },
+                                                        onProcess = { proc -> currentProcess = proc }
+                                                    )
+                                                }
+                                                task.isCompleted = true
+                                            } catch (_: CancellationException) { // Descarga cancelada por el usuario
+                                                val proc = currentProcess
+                                                scope.launch(Dispatchers.IO) {
+                                                    CommandManager.killProcessTree(proc)
+                                                    task.cleanResidualFiles()
+                                                }
+                                            } finally {
+                                                currentProcess = null
+                                                activeDownloads.remove(videoId)
+                                            }
                                         }
                                     }
+
+                                    task.onRetry = { startDownload() }
+                                    startDownload()
                                 }
                             }
                         }
@@ -456,6 +473,7 @@ private fun MediaDetailsPanel(
     expandedExt: Boolean, onExpandedExtChange: (Boolean) -> Unit,           // (dropdown) extension
     expandedQuality: Boolean, onExpandedQualityChange: (Boolean) -> Unit,   // (dropdown) quality - format
     isLoadingDetails: Boolean,
+    isDownloading: Boolean = false,
     duration: Int,
     onDownload: () -> Unit
 ) {
@@ -482,10 +500,7 @@ private fun MediaDetailsPanel(
         ) {
             val thumbnail = rememberThumbnail(details.thumbnail)
 
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.padding(0.dp)
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 if (thumbnail != null) {
                     Image(
                         bitmap = thumbnail,
@@ -537,8 +552,15 @@ private fun MediaDetailsPanel(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            val buttonDisabled = isLoadingDetails || isDownloading
+            val buttonText = when {
+                isLoadingDetails -> "Loading..."
+                isDownloading -> "Downloading..."
+                else -> "Download"
+            }
+
             BevelButton(
-                text = if (isLoadingDetails) "Loading..." else "Download",
+                text = buttonText,
                 colors = if (isLoadingDetails) {
                     BevelButtonDefaults.colors(
                         border = AppTheme.Border,
@@ -550,12 +572,12 @@ private fun MediaDetailsPanel(
                     )
                 } else {
                     BevelButtonDefaults.colors(
-                        fillHover = AppTheme.SurfaceHigh.copy(alpha = 0.35f)
+                        fillHover = AppTheme.SurfaceHigh.copy(0.35f)
                     )
                 },
                 font = BevelButtonDefaults.font(fontWeight = FontWeight.Medium),
                 onClick = {
-                    if (!isLoadingDetails) onDownload()
+                    if (!buttonDisabled) onDownload()
                 }
             )
         }
@@ -667,7 +689,7 @@ private fun MediaDetailsPanel(
                         ActionIcon(
                             iconName = "folder",
                             iconSize = Sizes.FieldIconSize,
-                            shape = Sizes.Round6,
+                            shape = Sizes.Round6, padding = 0.dp,
                             modifier = Modifier.size(Sizes.FieldTextHeight)
                         ) {
                             NativeFolderPicker.pickFolder(

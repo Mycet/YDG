@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
@@ -32,14 +33,14 @@ fun main() {
         var isSidebarExpanded by remember { mutableStateOf(Prefs.isSidebarExpanded) }
         var isMaximized by remember { mutableStateOf(false) }
         var normalBounds by remember { mutableStateOf<Rectangle?>(null) }
-    //  var appIcon = painterResource("icons/webada.png")
+
         Window(
             onCloseRequest = ::exitApplication,
             title = "YDG v0.1.0",
             state = windowState,
             undecorated = true,
-            resizable = !isMaximized
-            // icon = appIcon
+            resizable = !isMaximized,
+            icon = painterResource("icons/app_icon.png")
         ) {
             window.minimumSize = Dimension(1280, 720)
             window.background = java.awt.Color(0x1C, 0x1C, 0x1C)

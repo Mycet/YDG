@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.mycet.ydg.data.prefs.Prefs
+import dev.mycet.ydg.utils.formatProgress
 import dev.mycet.ydg.utils.toMB
 import java.io.File
 import java.util.*
@@ -16,12 +17,17 @@ interface DownloadItem {
     var speed: String
     var eta: String
     var statusPhase: String
+    var errorMessage: String
     var isCompleted: Boolean
     var hasError: Boolean
     var isVisible: Boolean
     var onCancel: (() -> Unit)?
+    var onRetry: (() -> Unit)?
     fun cancel() {
         onCancel?.invoke()
+    }
+    fun retry() {
+        onRetry?.invoke()
     }
 }
 
@@ -32,10 +38,12 @@ class SimpleTask(override var title: String): DownloadItem {
     override var speed by mutableStateOf("")
     override var eta by mutableStateOf("")
     override var statusPhase by mutableStateOf("")
+    override var errorMessage by mutableStateOf("")
     override var isCompleted by mutableStateOf(false)
     override var hasError by mutableStateOf(false)
     override var isVisible by mutableStateOf(true)
     override var onCancel: (() -> Unit)? = null
+    override var onRetry: (() -> Unit)? = null
 }
 
 class DownloadTask(override val title: String): DownloadItem {
@@ -45,15 +53,32 @@ class DownloadTask(override val title: String): DownloadItem {
     override var speed by mutableStateOf("")
     override var eta by mutableStateOf("")
     override var statusPhase by mutableStateOf("")
+    override var errorMessage by mutableStateOf("")
     override var isCompleted by mutableStateOf(false)
     override var hasError by mutableStateOf(false)
     override var isVisible by mutableStateOf(true)
     override var onCancel: (() -> Unit)? = null
+    override var onRetry: (() -> Unit)? = null
 
     private var isAudioPhase = false
     private var phase1TotalMB = 0f
     private var currentPhaseTotalMB = 0f
     private var lastRawProgress = 0f
+
+    fun resetProgress() {
+        progress = 0f
+        sizeText = ""
+        speed = ""
+        eta = ""
+        statusPhase = ""
+        isCompleted = false
+        hasError = false
+        isAudioPhase = false
+        phase1TotalMB = 0f
+        currentPhaseTotalMB = 0f
+        lastRawProgress = 0f
+        trackedFiles.clear()
+    }
 
     fun updateFromLog(line: String) {
         // Capturar rutas de archivos creados por yt-dlp para limpiarlos si se cancela
@@ -100,7 +125,7 @@ class DownloadTask(override val title: String): DownloadItem {
             val totalDownloadedMB = phase1TotalMB + currentDownloadedMB
             val grandTotalMB = phase1TotalMB + currentPhaseTotalMB
             if (grandTotalMB > 0f)
-                sizeText = String.format(Locale.US, "%.1f / %.1f MB", totalDownloadedMB, grandTotalMB)
+                sizeText = formatProgress(totalDownloadedMB.toDouble(), grandTotalMB.toDouble())
         }
 
         // Extraer velocidad
@@ -118,16 +143,18 @@ class DownloadTask(override val title: String): DownloadItem {
 
         // Detectar fases post-descarga
         if (line.contains("[Merger]")) {
-            statusPhase = "Merging..."
+            statusPhase = "Merging…"
             speed = ""; eta = ""
             progress = 1f
         } else if (line.contains("[ThumbnailsConvertor]") || line.contains("[EmbedThumbnail]")) {
-            statusPhase = "Metadata..."
+            statusPhase = "Writing metadata…"
             speed = ""; eta = ""
         }
 
-        if (line.startsWith("ERROR:") || line.startsWith("Error:") || line.startsWith("[error]"))
+        if (line.startsWith("ERROR:") || line.startsWith("Error:") || line.startsWith("[error]")) {
             hasError = true
+            errorMessage = line.replace(Regex("""^(ERROR|Error|\[error]):?\s*"""), "").trim()
+        }
     }
 
 

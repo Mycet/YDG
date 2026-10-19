@@ -411,7 +411,7 @@ fun SettingsFolder(
                         ActionIcon(
                             iconName = icon,
                             iconSize = 13.dp,
-                            shape = Sizes.Round6,
+                            shape = Sizes.Round6, padding = 0.dp,
                             modifier = Modifier.size(Sizes.FieldTextHeight)
                         ) { onDownload() }
                     }
@@ -419,7 +419,7 @@ fun SettingsFolder(
                 ActionIcon(
                     iconName = "folder",
                     iconSize = 13.dp,
-                    shape = Sizes.Round6,
+                    shape = Sizes.Round6, padding = 0.dp,
                     modifier = Modifier.size(Sizes.FieldTextHeight)
                 ) { onLocate() }
             }

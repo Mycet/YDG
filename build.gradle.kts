@@ -36,6 +36,12 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "dev.mycet.ydg.MainKt"
+
+        nativeDistributions {
+            windows {
+                iconFile.set(project.file("icon.ico"))
+            }
+        }
     }
 }
 

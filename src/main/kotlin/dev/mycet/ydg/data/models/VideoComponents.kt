@@ -1,11 +1,8 @@
 package dev.mycet.ydg.data.models
 
-import dev.mycet.ydg.utils.toGB
-import dev.mycet.ydg.utils.toKB
-import dev.mycet.ydg.utils.toMB
+import dev.mycet.ydg.utils.formatBytes
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.util.*
 
 @Serializable
 data class VideoDetails(
@@ -113,10 +110,6 @@ data class VideoFormat(
         val baseSize = effectiveSize ?: 0L
         val totalBytes = if (isVideoFormat && !isPreMerged) baseSize + audioSize else baseSize
         if (totalBytes <= 0L) return ""
-        return when {
-            totalBytes >= 1024 * 1024 * 1024 -> "%.1f GB".format(Locale.US, totalBytes.toGB())
-            totalBytes >= 1024 * 1024 -> "%.1f MB".format(Locale.US, totalBytes.toMB())
-            else -> "%.0f KB".format(Locale.US, totalBytes.toKB())
-        }
+        return totalBytes.formatBytes()
     }
 }
