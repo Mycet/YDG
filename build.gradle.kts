@@ -5,7 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.0"
 }
 
-group = "dev.mycet"
+group = "dev.maicet"
 version = "0.1.0"
 
 repositories {
@@ -35,7 +35,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "dev.mycet.ydg.MainKt"
+        mainClass = "dev.maicet.mailoader.MainKt"
 
         nativeDistributions {
             windows {
