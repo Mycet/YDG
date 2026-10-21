@@ -1,6 +1,8 @@
 package dev.mycet.ydg
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.runtime.getValue
@@ -10,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -45,10 +48,13 @@ fun main() {
             window.minimumSize = Dimension(1280, 720)
             window.background = java.awt.Color(0x1C, 0x1C, 0x1C)
 
+            val focusManager = LocalFocusManager.current
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(AppTheme.Background)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { focusManager.clearFocus() }
             ) {
                 WindowDraggableArea {
                     Row(

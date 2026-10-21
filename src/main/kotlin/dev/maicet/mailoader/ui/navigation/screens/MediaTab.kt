@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -108,6 +109,77 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
         selectedAudioQuality = getSelectedFormat(true, newDetails, selectedAudioExt)
     }
 
+    val triggerDownload = {
+        if (url.isNotBlank() && url.startsWith("http")) {
+            val downloadUrl = details?.url?.ifEmpty { url } ?: url
+            val videoId = details?.id?.ifEmpty { downloadUrl } ?: downloadUrl
+
+            if (!activeDownloads.contains(videoId)) {
+                activeDownloads.add(videoId)
+
+                val displayTitle = options.title.ifEmpty { details?.title ?: "Downloading..." }
+                val task = onNewDownload(displayTitle)
+                var job: Job? = null
+                var currentProcess: Process? = null
+
+                fun startDownload() {
+                    task.resetProgress()
+
+                    task.onCancel = {
+                        val proc = currentProcess
+                        job?.cancel()
+                        scope.launch(Dispatchers.IO) {
+                            CommandManager.killProcessTree(proc)
+                            task.cleanResidualFiles()
+                        }
+
+                        activeDownloads.remove(videoId)
+                    }
+
+                    job = scope.launch {
+                        try {
+                            if (isAudio) {
+                                val fmt = selectedAudioQuality ?: return@launch
+                                CommandManager.downloadAudio(
+                                    url = downloadUrl,
+                                    options = options,
+                                    formatId = fmt.formatId,
+                                    format = selectedAudioExt,
+                                    bitrate = fmt.audioBitrate?.toInt() ?: 128,
+                                    onProgress = { line -> task.updateFromLog(line) },
+                                    onProcess = { proc -> currentProcess = proc }
+                                )
+                            } else {
+                                val fmt = selectedVideoQuality ?: return@launch
+                                CommandManager.downloadVideo(
+                                    url = downloadUrl,
+                                    options = options,
+                                    formatId = fmt.formatId,
+                                    extension = fmt.extension,
+                                    onProgress = { line -> task.updateFromLog(line) },
+                                    onProcess = { proc -> currentProcess = proc }
+                                )
+                            }
+                            task.isCompleted = true
+                        } catch (_: CancellationException) { // Descarga cancelada por el usuario
+                            val proc = currentProcess
+                            scope.launch(Dispatchers.IO) {
+                                CommandManager.killProcessTree(proc)
+                                task.cleanResidualFiles()
+                            }
+                        } finally {
+                            currentProcess = null
+                            activeDownloads.remove(videoId)
+                        }
+                    }
+                }
+
+                task.onRetry = { startDownload() }
+                startDownload()
+            }
+        }
+    }
+
     LaunchedEffect(url) {
         previewItems = emptyList()
         details = null
@@ -160,9 +232,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
-            ) {
-                focusManager.clearFocus()
-            }
+            ) { focusManager.clearFocus() }
             .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 6.dp), // separación desde los bordes
         verticalArrangement = Arrangement.spacedBy(4.dp) // espaciado vertical entre elementos
     ) {
@@ -177,7 +247,13 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
             FieldText(
                 modifier = Modifier
                     .weight(1f)
-                    .height(Sizes.FieldTextHeight),
+                    .height(Sizes.FieldTextHeight)
+                    .onKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyUp && (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)) {
+                            triggerDownload()
+                            true // el evento fue consumido
+                        } else false
+                    },
                 value = url,
                 onValueChange = { url = it },
                 leadingIcon = {
@@ -234,12 +310,9 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                         painter = painterResource("icons/continue.svg"),
                         contentDescription = null,
                         tint = AppTheme.Font2,
-                        modifier = Modifier.size(20.dp).clickable {
-
-                        }
-
+                        modifier = Modifier.size(20.dp)
+                            .clickable { triggerDownload() }
                     )
-
                 },
 
             ) {
@@ -355,71 +428,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                                     isLoadingDetails = isLoadingDetails,
                                     isDownloading = activeDownloads.contains(nonNullDetails.id),
                                     duration = nonNullDetails.duration.roundToInt(),
-                                ) {
-                                    val videoId = nonNullDetails.id
-                                    if (activeDownloads.contains(videoId)) return@MediaDetailsPanel
-
-                                    activeDownloads.add(videoId)
-
-                                    val task = onNewDownload(options.title)
-                                    var job: Job? = null
-                                    var currentProcess: Process? = null
-
-                                    fun startDownload() {
-                                        task.resetProgress()
-
-                                        task.onCancel = {
-                                            val proc = currentProcess
-                                            job?.cancel()
-                                            scope.launch(Dispatchers.IO) {
-                                                CommandManager.killProcessTree(proc)
-                                                task.cleanResidualFiles()
-                                            }
-
-                                            activeDownloads.remove(videoId)
-                                        }
-
-                                        job = scope.launch {
-                                            try {
-                                                if (currentIsAudio) {
-                                                    val fmt = selectedAudioQuality ?: return@launch
-                                                    CommandManager.downloadAudio(
-                                                        url = nonNullDetails.url,
-                                                        options = options,
-                                                        formatId = fmt.formatId,
-                                                        format = selectedAudioExt,
-                                                        bitrate = fmt.audioBitrate?.toInt() ?: 128,
-                                                        onProgress = { line -> task.updateFromLog(line) },
-                                                        onProcess = { proc -> currentProcess = proc }
-                                                    )
-                                                } else {
-                                                    val fmt = selectedVideoQuality ?: return@launch
-                                                    CommandManager.downloadVideo(
-                                                        url = nonNullDetails.url,
-                                                        options = options,
-                                                        formatId = fmt.formatId,
-                                                        extension = fmt.extension,
-                                                        onProgress = { line -> task.updateFromLog(line) },
-                                                        onProcess = { proc -> currentProcess = proc }
-                                                    )
-                                                }
-                                                task.isCompleted = true
-                                            } catch (_: CancellationException) { // Descarga cancelada por el usuario
-                                                val proc = currentProcess
-                                                scope.launch(Dispatchers.IO) {
-                                                    CommandManager.killProcessTree(proc)
-                                                    task.cleanResidualFiles()
-                                                }
-                                            } finally {
-                                                currentProcess = null
-                                                activeDownloads.remove(videoId)
-                                            }
-                                        }
-                                    }
-
-                                    task.onRetry = { startDownload() }
-                                    startDownload()
-                                }
+                                ) { triggerDownload() }
                             }
                         }
 
