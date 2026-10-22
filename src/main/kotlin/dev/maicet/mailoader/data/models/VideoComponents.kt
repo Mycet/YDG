@@ -25,20 +25,14 @@ data class VideoDetails(
         }
 
     val bestAudioSize: Long
-        get() {
-            val audioFormat = formats
-                .filter { it.isAudioFormat }
-                .maxByOrNull { it.audioBitrate ?: it.tbr ?: 0.0} ?: return 0L
-
-            val size = audioFormat.effectiveSize ?: 0L
-            if (size > 0L) return size
-
-            // Si no reportan tamaño, calcular
-            val bitrate = audioFormat.audioBitrate ?: audioFormat.tbr ?: 0.0
-            if (bitrate > 0.0 && duration > 0.0)
-                return ((bitrate * 1000.0 / 8.0) * duration).toLong()
-            return 0L
-        }
+        get() = formats
+            .filter { it.isAudioFormat }
+            .maxByOrNull { it.audioBitrate ?: 0.0 }
+            ?.effectiveSize ?: 0L
+    val bestAudioFormat: VideoFormat?
+        get() = formats
+            .filter { it.isAudioFormat }
+            .maxByOrNull { it.audioBitrate ?: it.tbr ?: 0.0 }
 
     val audioExtensions: List<String> get() = listOf("mp3", "m4a", "wav", "flac") // para audio no es necesario ver los disponibles, yt-dlp lo convierte
     val videoExtensions: List<String> get() = formats
@@ -66,7 +60,15 @@ data class VideoDetails(
             }
             .groupBy { it.displayQuality }
             .mapValues { (_,group) ->
-                val chosen = group.maxByOrNull { it.effectiveSize ?: 0L }!!
+                val candidates = if (isReddit) {
+                    group.filter { it.formatId.startsWith("dash-") }
+                        .ifEmpty { group.filter { it.formatId != "fallback" } }
+                        .ifEmpty { group }
+                } else group
+
+                val chosen = candidates.maxWithOrNull(
+                    compareBy({ it.effectiveSize ?: 0L }, { it.tbr ?: 0.0 })
+                )!!
 
                 if (isTwitter && chosen.height != null) {
                     val hlsTwin = formats.firstOrNull {
@@ -74,22 +76,12 @@ data class VideoDetails(
                     }
                     if (hlsTwin?.tbr != null && duration > 0.0) {
                         val calculatedBytes = ((hlsTwin.tbr * 1000.0 / 8.0) * duration).toLong()
-                        chosen.copy(filesizeApprox = calculatedBytes)
+                        chosen.copy(filesize = calculatedBytes, filesizeApprox = calculatedBytes)
                     } else chosen
                 }
-                // 2. Reddit: el tamaño del video ya contempla el total (o se calcula de tbr si es 0)
-                else if (isReddit) {
-                    val realSize = if ((chosen.effectiveSize ?: 0L) > 0L) {
-                        chosen.effectiveSize
-                    } else if ((chosen.tbr ?: 0.0) > 0.0 && duration > 0.0) {
-                        ((chosen.tbr!! * 1000.0 / 8.0) * duration).toLong()
-                    } else null
-                    chosen.copy(filesizeApprox = realSize, audioCodec = "dash_included")
-                }
-                // 3. Otros sitios sin tamaño directo
                 else if ((chosen.effectiveSize ?: 0L) == 0L && (chosen.tbr ?: 0.0) > 0.0 && duration > 0.0) {
                     val calculatedBytes = ((chosen.tbr!! * 1000.0 / 8.0) * duration).toLong()
-                    chosen.copy(filesizeApprox = calculatedBytes, audioCodec = "dash_included")
+                    chosen.copy(filesize = calculatedBytes, filesizeApprox = calculatedBytes)
                 } else chosen
             }
             .values
@@ -164,7 +156,7 @@ data class VideoFormat(
 
     fun totalDisplaySize(audioSize: Long = 0L): String {
         val baseSize = effectiveSize ?: 0L
-        val totalBytes = if (isVideoFormat && !isPreMerged) baseSize + audioSize else baseSize
+        val totalBytes = if (isVideoFormat && !isPreMerged && audioSize > 0L) baseSize + audioSize else baseSize
         if (totalBytes <= 0L) return ""
         return totalBytes.formatBytes()
     }

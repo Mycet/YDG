@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +33,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.core.CommandManager
@@ -154,7 +151,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                                 CommandManager.downloadVideo(
                                     url = downloadUrl,
                                     options = options,
-                                    formatId = fmt.formatId,
+                                    formatId = fmt.formatId, audioFormatId = details?.bestAudioFormat?.formatId,
                                     extension = fmt.extension,
                                     onProgress = { line -> task.updateFromLog(line) },
                                     onProcess = { proc -> currentProcess = proc }
@@ -257,70 +254,42 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                 value = url,
                 onValueChange = { url = it },
                 leadingIcon = {
-                    Icon (
-                        painter = painterResource("icons/link.svg"),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = AppTheme.Font2
-                    )
+                    ActionIcon(
+                        iconName = "link",
+                        iconSize = Sizes.FieldIconSize * 2,
+                        hoveredColor = Color.Transparent, tint = AppTheme.Font2,
+                        modifier = Modifier.size(Sizes.FieldTextHeight)
+                    ) {}
                 },
 
                 trailingIcon = {
-                    TooltipArea(
-                        tooltip = {
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        color = AppTheme.Sunken,
-                                        shape = RoundedCornerShape(6.dp)
-                                    )
-                                    .border(1.dp, AppTheme.Border, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text (
-                                    text = "Copy from clipboard",
-                                    color = AppTheme.Font1,
-                                    fontSize = Sizes.FieldFontSize
-                                )
-                            }
-                        },
-                        delayMillis = 300,
-                        tooltipPlacement = TooltipPlacement.CursorPoint(
-                            alignment = Alignment.BottomEnd,
-                            offset = DpOffset(0.dp, 8.dp)
-                        )
-                    ) {
-                        Icon(
-                            painter = painterResource("icons/clipboard.svg"),
-                            contentDescription = "Copy from clipboard",
-                            tint = AppTheme.Font2,
-                            modifier = Modifier.size(20.dp)
-                                .clickable {
-                                    val texto = clipboardManager.getText()?.text
-                                    if (!clipboardManager.equals(" ")) {
-                                        url = toString(texto)
-                                    }
-                                }
-                        )
+                    TooltipField(text = "Paste from clipboard") {
+                        ActionIcon(
+                            iconName = "clipboard",
+                            description = "mediaPasteClipboard",
+                            iconSize = Sizes.FieldIconSize * 2,
+                            modifier = Modifier.size(Sizes.FieldTextHeight)
+                        ) {
+                            val clipboardText = clipboardManager.getText()?.text
+                            if (!clipboardText.isNullOrEmpty())
+                                url = toString(clipboardText)
+                        }
                     }
 
-                    Spacer(Modifier.width(8.dp))
-
-                    Icon(
-                        painter = painterResource("icons/continue.svg"),
-                        contentDescription = null,
-                        tint = AppTheme.Font2,
-                        modifier = Modifier.size(20.dp)
-                            .clickable { triggerDownload() }
-                    )
+                    TooltipField(text = "Download") {
+                        ActionIcon(
+                            iconName = "continue", description = "mediaContinue",
+                            iconSize = Sizes.FieldIconSize * 2,
+                            modifier = Modifier.size(Sizes.FieldTextHeight)
+                        ) { triggerDownload() }
+                    }
                 },
-
             ) {
                 if (url.isEmpty()) {
                     Text(
                         "Insert link here",
                         color = AppTheme.Font2,
-                        fontSize = Sizes.FieldFontSize
+                        fontSize = Sizes.FieldFont
                     )
                 }
             }
@@ -367,7 +336,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                     Text(
                         text = "Loading...",
                         color = AppTheme.Font2,
-                        fontSize = Sizes.FieldFontSize,
+                        fontSize = Sizes.FieldFont,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -376,7 +345,7 @@ fun MediaTab(scope: CoroutineScope, initialIsAudio: Boolean = false, onNewDownlo
                     Text(
                         text = "No results",
                         color = AppTheme.Font2,
-                        fontSize = Sizes.FieldFontSize,
+                        fontSize = Sizes.FieldFont,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -662,7 +631,7 @@ private fun MediaDetailsPanel(
                     append(quality)
                     append("    ")
                     withStyle(SpanStyle(color = AppTheme.Font2)) {
-                        append(format.totalDisplaySize(if (isAudio) 0L else details.bestAudioSize))
+                        append("~${format.totalDisplaySize(if (isAudio) 0L else details.bestAudioSize ?: 0L)}")
                     }
                 }
             }
@@ -698,7 +667,7 @@ private fun MediaDetailsPanel(
                         ActionIcon(
                             iconName = "folder",
                             iconSize = Sizes.FieldIconSize,
-                            shape = Sizes.Round6, padding = 0.dp,
+                            shape = Sizes.Round6,
                             modifier = Modifier.size(Sizes.FieldTextHeight)
                         ) {
                             NativeFolderPicker.pickFolder(
@@ -712,7 +681,7 @@ private fun MediaDetailsPanel(
                     }
                 ) {
                     if (Prefs.downloadFolder.isEmpty()) {
-                        Text("Select download destination folder...", color = AppTheme.Font2, fontSize = Sizes.FieldFontSize)
+                        Text("Select download destination folder...", color = AppTheme.Font2, fontSize = Sizes.FieldFont)
                     }
                 }
             }
@@ -731,6 +700,7 @@ private fun MediaPlaylist(
     val scrollState = rememberLazyListState()
     var isLoadingMore by remember { mutableStateOf(false) }
     var currentItems by remember { mutableStateOf(previewItems) }
+    val selectedIndex = currentItems.indexOfFirst { it.id == selectedVideoId }.let { if (it >= 0) it + 1 else 1 }
 
     // sincronizar por si 'previewItems' cambia desde afuera
     LaunchedEffect(previewItems) { currentItems = previewItems }
@@ -823,6 +793,22 @@ private fun MediaPlaylist(
                         )
                 )
             }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 4.dp)
+                    .background(AppTheme.Sunken.copy(alpha = 0.85f), Sizes.Round6)
+                    .border(1.dp, AppTheme.Border, Sizes.Round6)
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "$selectedIndex / ${currentItems.size}",
+                    color = AppTheme.Font2,
+                    fontSize = Sizes.TooltipFont,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         HorizontalScrollbar(
@@ -849,7 +835,7 @@ private fun PropertyRow(
         Text(
             text = label,
             color = AppTheme.Font2,
-            fontSize = Sizes.FieldFontSize,
+            fontSize = Sizes.FieldFont,
             modifier = Modifier.width(80.dp)
         )
         content()

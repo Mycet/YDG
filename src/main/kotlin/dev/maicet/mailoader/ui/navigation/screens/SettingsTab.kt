@@ -1,6 +1,8 @@
 package dev.mycet.ydg.ui.navigation.screens
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.core.CommandManager
@@ -316,7 +317,7 @@ fun RowScope.SettingLabel(
         Text(
             text = title,
             color = AppTheme.Font1,
-            fontSize = Sizes.FieldFontSize
+            fontSize = Sizes.FieldFont
         )
         if (description.isNotBlank()) {
             Row (
@@ -334,7 +335,7 @@ fun RowScope.SettingLabel(
                 Text(
                     text = description,
                     color = AppTheme.Font2,
-                    fontSize = Sizes.FieldFontSize
+                    fontSize = Sizes.FieldFont
                 )
             }
         }
@@ -397,35 +398,21 @@ fun SettingsFolder(
                         }
                     } ?: "download"
 
-                    TooltipArea(
-                        tooltip = {
-                            Box(
-                                modifier = Modifier.fieldStyle().padding(8.dp)
-                            ) {
-                                Text(tooltip, color = AppTheme.Font1, fontSize = 13.sp)
-                            }
-                        },
-                        tooltipPlacement = TooltipPlacement.CursorPoint(offset = DpOffset((8).dp, (-8).dp), alignment = Alignment.TopEnd),
-                        delayMillis = 200
-                    ) {
+                    TooltipField(text = tooltip) {
                         ActionIcon(
                             iconName = icon,
-                            iconSize = 13.dp,
-                            shape = Sizes.Round6, padding = 0.dp,
                             modifier = Modifier.size(Sizes.FieldTextHeight)
                         ) { onDownload() }
                     }
                 }
                 ActionIcon(
                     iconName = "folder",
-                    iconSize = 13.dp,
-                    shape = Sizes.Round6, padding = 0.dp,
                     modifier = Modifier.size(Sizes.FieldTextHeight)
                 ) { onLocate() }
             }
         ) {
             if (value.isEmpty()) {
-                Text(placeholder, color = AppTheme.Font2, fontSize = 13.sp)
+                Text(placeholder, color = AppTheme.Font2, fontSize = Sizes.FieldFont)
             }
         }
     }

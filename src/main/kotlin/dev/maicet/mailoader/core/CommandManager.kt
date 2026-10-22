@@ -89,14 +89,15 @@ object CommandManager {
     suspend fun downloadVideo(
         url: String,
         options: MediaOptions,
-        formatId: String,
+        formatId: String, audioFormatId: String?,
         extension: String,
         onProgress: (String) -> Unit,
         onProcess: ((Process) -> Unit)? = null
     ) {
+        val audio = audioFormatId ?: "bestaudio"
         val ytDlp = ytDlpPath()
         val comando = mutableListOf(ytDlp).apply { // .apply permite modificar tras crear
-            addAll(listOf("--format", "$formatId+bestaudio/best"))
+            addAll(listOf("--format", "$formatId+$audio/best"))
             addAll(listOf("--merge-output-format", extension.lowercase().trim()))
             addCommonMediaArgs(url, options, this)
         }
@@ -122,6 +123,11 @@ object CommandManager {
         }
 
         execute(comando, onProgress, onProcess);
+    }
+
+    suspend fun updateYtDlp(onProgress: (String) -> Unit) {
+        val comando = mutableListOf(ytDlpPath(), "-U")
+        execute(comando, onProgress)
     }
 
     fun addCommonMediaArgs(url: String, options: MediaOptions, cmd: MutableList<String>) {
@@ -158,12 +164,11 @@ object CommandManager {
         if (options.embedSubs) cmd.add("--embed-subs")
         if (options.sponsorBlock) cmd.addAll(listOf("--sponsorblock-remove", "all"))
 
-        cmd.add(url)
-    }
-
-    suspend fun updateYtDlp(onProgress: (String) -> Unit) {
-        val comando = mutableListOf(ytDlpPath(), "-U")
-        execute(comando, onProgress)
+        val targetUrl = if (url.contains("reddit.com", ignoreCase = true)) {
+            url.replace(Regex("""https?://(www\.)?reddit\.com"""), "https://old.reddit.com")
+        } else url
+        if (isReddit(url)) cmd.addAll(listOf("--impersonate", "chrome"))
+        cmd.add(targetUrl)
     }
 
     suspend fun fetchVideoInfo(
@@ -210,13 +215,22 @@ object CommandManager {
 
                 results
             } catch (ex: Exception) {
+                ex.printStackTrace()
                 emptyList()
             }
         }
     }
 
-    suspend fun fetchVideoDetails(url: String): VideoDetails? {
-        return withContext(Dispatchers.IO) {
+    suspend fun fetchVideoDetails(url: String): VideoDetails? = withContext(Dispatchers.IO) {
+        val reddit = isReddit(url)
+        val cleanUrl =
+            if (reddit) url.replace(Regex("""https?://(www\.)?reddit\.com"""), "https://old.reddit.com")
+            else url
+
+        // null = sin impersonation (YouTube y otros); Reddit prueba varios
+        val targets: List<String?> = if (reddit) listOf("chrome", "safari", "firefox") else listOf(null)
+
+        for (target in targets) {
             try {
                 val comando = mutableListOf(ytDlpPath(), "--dump-json", "--no-playlist").apply {
                     if (Prefs.browserForCookies.isNotBlank())
@@ -226,23 +240,22 @@ object CommandManager {
                     if (File(denoExe).exists())
                         addAll(listOf("--js-runtimes", denoExe))
 
-                    add(url)
+                    if (target != null) addAll(listOf("--impersonate", target))
+                    add(cleanUrl)
                 }
 
-                val proceso = ProcessBuilder(comando)
-                    .redirectErrorStream(true)
-                    .start()
-
+                val proceso = ProcessBuilder(comando).redirectErrorStream(true).start()
                 val output = proceso.inputStream.bufferedReader().readText()
                 proceso.waitFor()
 
-                val line = output.lines().firstOrNull { it.startsWith("{") } ?: return@withContext null
-                json.decodeFromString<VideoDetails>(line)
-
+                val line = output.lines().firstOrNull { it.startsWith("{") }
+                if (line != null) return@withContext json.decodeFromString<VideoDetails>(line)
+                println("DEBUG_YTDLP target=$target output:\n$output")
             } catch (ex: Exception) {
-                null
+                ex.printStackTrace()
             }
         }
+        null
     }
 
     suspend fun downloadFile(url: String, destPath: String, onProgress: (String) -> Unit) {
@@ -356,3 +369,6 @@ object CommandManager {
         }
     }
 }
+
+fun isReddit(url: String): Boolean = url.contains("reddit.com", ignoreCase = true)
+fun isTwitter(url: String): Boolean = url.contains("x.com", ignoreCase = true) || url.contains("twitter.com", ignoreCase = true)

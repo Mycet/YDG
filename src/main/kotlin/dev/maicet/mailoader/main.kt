@@ -20,7 +20,7 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import dev.mycet.ydg.data.prefs.Prefs
-import dev.mycet.ydg.ui.components.ActionIcon
+import dev.mycet.ydg.ui.components.TopIcon
 import dev.mycet.ydg.ui.theme.AppTheme
 import java.awt.Dimension
 import java.awt.Rectangle
@@ -64,11 +64,9 @@ fun main() {
                             .background(AppTheme.Background),
                         verticalAlignment = CenterVertically
                     ) {
-                        ActionIcon(
+                        TopIcon(
                             iconName = "top_expand",
-                            description = "TopExpand",
-                            modifier = Modifier.fillMaxHeight().width(40.dp),
-                            padding = 0.dp
+                            description = "TopExpand"
                         ) {
                             isSidebarExpanded = !isSidebarExpanded
                             Prefs.isSidebarExpanded = isSidebarExpanded
@@ -77,20 +75,16 @@ fun main() {
                         Spacer(modifier = Modifier.weight(1f))
 
                         // Botón Minimizar
-                        ActionIcon(
+                        TopIcon(
                             iconName = "top_minimize",
-                            description = "Minimize",
-                            modifier = Modifier.fillMaxHeight().width(40.dp),
-                            padding = 0.dp
+                            description = "Minimize"
                         ) {
                             windowState.isMinimized = true
                         }
                         // Botón Pantalla Completa
-                        ActionIcon(
+                        TopIcon(
                             iconName = if (windowState.placement == WindowPlacement.Floating) "top_maximize" else "top_restore",
-                            description = if (windowState.placement == WindowPlacement.Floating) "Maximize" else "Restore",
-                            modifier = Modifier.fillMaxHeight().width(40.dp),
-                            padding = 0.dp
+                            description = if (windowState.placement == WindowPlacement.Floating) "Maximize" else "Restore"
                         ) {
                             if (isMaximized) {
                                 normalBounds?.let { window.bounds = it }
@@ -110,12 +104,10 @@ fun main() {
                             }
                         }
                         // Botón Cerrar
-                        ActionIcon(
+                        TopIcon(
                             hoveredColor = Color.Red,
                             iconName = "cross",
-                            description = "Close",
-                            modifier = Modifier.fillMaxHeight().width(40.dp),
-                            padding = 0.dp
+                            description = "Close"
                         ) {
                             exitApplication()
                         }

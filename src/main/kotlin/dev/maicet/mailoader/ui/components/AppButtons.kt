@@ -4,9 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -19,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -33,12 +32,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.maicet.mailoader.utils.tooltipPlacementCursor
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
 import dev.mycet.ydg.utils.fieldPadding
 import dev.mycet.ydg.utils.formatPathMiddle
 import dev.mycet.ydg.utils.toSVG
-import androidx.compose.ui.draw.clip
 
 data class BevelButtonColors(
     val border: Color,
@@ -68,14 +67,13 @@ object BevelButtonDefaults {
 
     @Composable
     fun font(
-        fontSize: TextUnit = Sizes.FieldFontSize,
+        fontSize: TextUnit = Sizes.FieldFont,
         fontWeight: FontWeight = FontWeight.Normal
     ) = BevelButtonFont(
         fontSize = fontSize, fontWeight = fontWeight
     )
 }
 
-// 2. Componente base (Cascarón biselado que recibe cualquier contenido)
 @Composable
 fun BevelButton(
     onClick: () -> Unit,
@@ -242,7 +240,7 @@ fun <T> FieldDropdown(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp)
             ) {
-                Text(text = value, color = AppTheme.Font1, fontSize = Sizes.FieldFontSize, modifier = Modifier.weight(1f))
+                Text(text = value, color = AppTheme.Font1, fontSize = Sizes.FieldFont, modifier = Modifier.weight(1f))
 
                 CompositionLocalProvider(LocalContentColor provides if (expanded) AppTheme.Accent else AppTheme.Border) {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
@@ -264,7 +262,7 @@ fun <T> FieldDropdown(
                         Text(
                             label(option),
                             color = AppTheme.Font1,
-                            fontSize = Sizes.FieldFontSize
+                            fontSize = Sizes.FieldFont
                         )
                     },
                     trailingIcon = {
@@ -346,7 +344,7 @@ fun FieldText(
                     modifier = Modifier.fillMaxSize().fieldPadding()
                 ) {
 
-                    if(leadingIcon != null) {
+                    if (leadingIcon != null) {
                         leadingIcon()
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -361,14 +359,14 @@ fun FieldText(
                             Text(
                                 text = if (maxLength == null) value else value.formatPathMiddle(maxLength),
                                 color = color,
-                                fontSize = Sizes.FieldFontSize,
+                                fontSize = Sizes.FieldFont,
                                 maxLines = 1
                             )
                         } else
                             innerTextField()
                     }
 
-                    if(trailingIcon != null) {
+                    if (trailingIcon != null) {
                         Spacer(modifier = Modifier.width(8.dp))
                         trailingIcon()
                     }
@@ -410,6 +408,31 @@ fun FieldSwitch(
                 )
         )
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TooltipField(
+    text: String, textColor: Color = AppTheme.Font1, textSize: TextUnit = Sizes.TooltipFont,
+    delayMillis: Int = 200,
+    tooltipPlacement: TooltipPlacement = tooltipPlacementCursor(),
+    content: @Composable () -> Unit
+) {
+    TooltipArea(
+        tooltip = {
+            Box(
+                modifier = Modifier
+                    .background(AppTheme.Sunken, Sizes.Round8)
+                    .border(1.dp, AppTheme.Border, Sizes.Round8)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .widthIn(max = 280.dp)
+            ) {
+                Text(text = text, color = textColor, fontSize = textSize)
+            }
+        },
+        delayMillis = delayMillis,
+        tooltipPlacement = tooltipPlacement
+    ) { content() }
 }
 
 @Composable
@@ -555,7 +578,7 @@ fun <T> MultiOptionSwitch(
                             Text(
                                 text = labelText,
                                 color = contentColor,
-                                fontSize = Sizes.FieldFontSize, // Fuente exacta de tu código
+                                fontSize = Sizes.FieldFont, // Fuente exacta de tu código
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                                 maxLines = 1
                             )

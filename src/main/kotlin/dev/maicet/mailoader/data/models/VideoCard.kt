@@ -1,13 +1,15 @@
 package dev.mycet.ydg.data.models
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -15,9 +17,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.maicet.mailoader.utils.tooltipPlacementRect
+import dev.mycet.ydg.ui.components.TooltipField
 import dev.mycet.ydg.ui.theme.AppTheme
 import dev.mycet.ydg.ui.theme.Sizes
 import kotlinx.coroutines.Dispatchers
@@ -112,33 +115,10 @@ fun VideoCard(
         }
 
         if (isTruncated) {
-            TooltipArea(
-                delayMillis = 400,
-                tooltip = {
-                    Box(
-                        modifier = Modifier
-                            .background(AppTheme.Sunken, Sizes.Round8)
-                            .border(1.dp, AppTheme.Border, Sizes.Round8)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .widthIn(max = 280.dp)
-                    ) {
-                        Text(
-                            text = video.title,
-                            color = AppTheme.Font1,
-                            fontSize = Sizes.TooltipFont
-                        )
-                    }
-                },
-                tooltipPlacement = TooltipPlacement.ComponentRect(
-                    anchor = Alignment.TopCenter,
-                    alignment = Alignment.BottomCenter,
-                    offset = DpOffset(0.dp, (-12).dp) // Desplaza 6dp hacia arriba del texto
-                )
-            ) {
-                titleContent()
-            }
-        } else {
-            titleContent()
-        }
+            TooltipField(
+                text = video.title,
+                tooltipPlacement = tooltipPlacementRect()
+            ) { titleContent() }
+        } else titleContent()
     }
 }

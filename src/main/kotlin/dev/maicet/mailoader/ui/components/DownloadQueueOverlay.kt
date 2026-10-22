@@ -21,8 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import dev.maicet.mailoader.utils.tooltipPlacementRect
 import dev.mycet.ydg.data.models.DownloadItem
 import dev.mycet.ydg.data.prefs.Prefs
 import dev.mycet.ydg.ui.theme.AppTheme
@@ -79,7 +79,7 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
 
                     BevelContainer(modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
+                        .height(70.dp)
                         .hoverable(interactionSource = interactionSource) // lo hace hoverable
                         .alpha(alpha) // le aplica la transparencia dependiente de si se le pone el mouse encima o no
                     ) {
@@ -103,37 +103,20 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                                     modifier = Modifier.weight(1f).padding(end = 6.dp)
                                 )
 
-                                val closeInteraction = remember { MutableInteractionSource() }
-                                val isCloseHovered by closeInteraction.collectIsHoveredAsState()
-
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(Sizes.Round4)
-                                        .background(if (isCloseHovered) AppTheme.SurfaceHigh else Color.Transparent)
-                                        .clickable(
-                                            interactionSource = closeInteraction,
-                                            indication = null
-                                        ) {
-                                            if (!task.isCompleted && !task.hasError)
-                                                task.cancel()
-
-                                            task.isVisible = false
-                                            scope.launch {
-                                                delay(400.milliseconds)
-                                                if (downloads.contains(task)) downloads.remove(task)
-                                            }
-                                        }
+                                ActionIcon(
+                                    iconName = "cross",
+                                    description = if (task.isCompleted || task.hasError) "taskClose" else "taskCancel",
+                                    iconSize = Sizes.TooltipIconSize,
+                                    modifier = Modifier.size(20.dp)
                                 ) {
-                                    Icon(
-                                        painter = painterResource("cross".toSVG()),
-                                        contentDescription = if (task.isCompleted || task.hasError) "Close" else "Cancel",
-                                        tint = if (isCloseHovered) {
-                                            if (task.isCompleted || task.hasError) AppTheme.Font1 else AppTheme.Red
-                                        } else AppTheme.Font2.copy(0.6f),
-                                        modifier = Modifier.size(Sizes.TooltipIconSize)
-                                    )
+                                    if (!task.isCompleted && !task.hasError)
+                                        task.cancel()
+
+                                    task.isVisible = false
+                                    scope.launch {
+                                        delay(400.milliseconds)
+                                        if (downloads.contains(task)) downloads.remove(task)
+                                    }
                                 }
                             }
 
@@ -188,11 +171,7 @@ fun DownloadQueueOverlay(downloads: MutableList<DownloadItem>, modifier: Modifie
                                                             )
                                                         }
                                                     },
-                                                    tooltipPlacement = TooltipPlacement.ComponentRect(
-                                                        anchor = Alignment.TopCenter,
-                                                        alignment = Alignment.BottomCenter,
-                                                        offset = DpOffset(0.dp, (-8).dp)
-                                                    )
+                                                    tooltipPlacement = tooltipPlacementRect()
                                                 ) {
                                                     Text(
                                                         text = "Error · $displayError",
@@ -292,7 +271,7 @@ fun RowScope.CardState( // al hacerlo RowScope puedo usar `Modifier.weight`
                 painter = painterResource(startIcon.toSVG()),
                 contentDescription = startIconId ?: startIcon,
                 tint = startIconTint,
-                modifier = Modifier.size(Sizes.FieldFontSize.toDP())
+                modifier = Modifier.size(Sizes.FieldFont.toDP())
             )
 
         if (startContent != null) {
@@ -325,8 +304,7 @@ fun RowScope.CardState( // al hacerlo RowScope puedo usar `Modifier.weight`
             iconName = endIcon,
             description = endIconId ?: endIcon,
             iconSize = Sizes.TooltipIconSize,
-            padding = 2.dp,
-            shape = Sizes.Round4
+            modifier = Modifier.size(20.dp)
         ) { endClickable?.invoke(task) }
     }
 }

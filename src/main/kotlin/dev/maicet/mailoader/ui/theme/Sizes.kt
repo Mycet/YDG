@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.sp
 object Sizes {
     // Font
     val TooltipFont = 12.sp
-    val FieldFontSize = 14.sp
+    val FieldFont = 14.sp
     val TitleFont = 18.sp
 
     val TitleWeight = FontWeight.SemiBold
@@ -26,9 +26,9 @@ object Sizes {
 
     // Shapes
     val Round4      = RoundedCornerShape(4.dp)
-    val Round6      = RoundedCornerShape(6.dp)
-    val Round8      = RoundedCornerShape(8.dp)
-    val Round12     = RoundedCornerShape(12.dp)
+    val Round6      = RoundedCornerShape(6.dp)      // Icons
+    val Round8      = RoundedCornerShape(8.dp)      // Fields
+    val Round12     = RoundedCornerShape(12.dp)     // Switch / Big fields
 }
 
 fun TextUnit.toDP(): Dp = this.value.dp

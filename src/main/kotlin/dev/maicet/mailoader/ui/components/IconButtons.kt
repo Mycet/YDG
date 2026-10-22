@@ -27,24 +27,28 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.mycet.ydg.ui.theme.AppTheme
+import dev.mycet.ydg.ui.theme.Sizes
 import dev.mycet.ydg.utils.toSVG
 
 // Action Icon
 // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 @Composable
 fun ActionIcon(
-    hoveredColor: Color = AppTheme.Surface,
-    backgroundColor: Color = Color.Transparent,
     iconName: String,
     description: String = "TopIcon",
-    shape: RoundedCornerShape = RoundedCornerShape(0.dp),
-    iconSize: Dp = 13.dp,
-    padding: Dp = 6.dp,
-    modifier: Modifier = Modifier,
+    hoveredColor: Color = AppTheme.Surface,
+    backgroundColor: Color = Color.Transparent,
+    shape: RoundedCornerShape = Sizes.Round4,
+    iconSize: Dp = Sizes.FieldIconSize,
+    padding: Dp = 0.dp,
+    tint: Color? = null,
+    modifier: Modifier = Modifier.size(Sizes.FieldTextHeight),
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val tint = tint ?: if (isHovered) AppTheme.Font1 else AppTheme.Font2
 
     Box(
         contentAlignment = Alignment.Center,
@@ -63,11 +67,24 @@ fun ActionIcon(
         Icon(
             painter = painterResource(iconName.toSVG()),
             contentDescription = description,
-            tint = if (isHovered) AppTheme.Font1 else AppTheme.Font2,
+            tint = tint,
             modifier = Modifier.size(iconSize)
         )
     }
 }
+@Composable
+fun TopIcon(
+    iconName: String, description: String,
+    hoveredColor: Color = Color.Transparent,
+    onClick: () -> Unit
+) = ActionIcon(
+    iconName = iconName,
+    description = description,
+    hoveredColor = hoveredColor,
+    modifier = Modifier.fillMaxHeight().width(40.dp),
+    padding = 0.dp, shape = RoundedCornerShape(0.dp)
+) { onClick() }
+
 
 // Navigation Icon
 // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
